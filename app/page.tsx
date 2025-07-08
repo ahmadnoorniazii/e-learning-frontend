@@ -153,94 +153,102 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black/20" />
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
         <div className="relative container py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-4">
                 <h1 className="text-4xl md:text-6xl font-bold leading-tight">
                   Learn Without
-                  <span className="block bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+                  <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
                     Limits
                   </span>
                 </h1>
-                <p className="text-xl md:text-2xl text-blue-100 leading-relaxed">
+                <p className="text-xl md:text-2xl text-gray-200 leading-relaxed">
                   Join thousands of students learning from industry experts. 
                   Master new skills and advance your career with our comprehensive courses.
                 </p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6" asChild>
+                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-8 py-6 shadow-2xl transform hover:scale-105 transition-all duration-300" asChild>
                   <Link href="/courses">
                     Start Learning Today
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="outline"
                   size="lg" 
-                  className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-6"
+                  className="border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm text-lg px-8 py-6 transform hover:scale-105 transition-all duration-300"
                   asChild
                 >
                   <Link href="/courses">Browse Courses</Link>
                 </Button>
               </div>
 
-              <div className="flex items-center space-x-8 pt-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">50k+</div>
-                  <div className="text-blue-200 text-sm">Students</div>
+              <div className="flex items-center space-x-8 pt-8">
+                <div className="text-center group">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">50k+</div>
+                  <div className="text-gray-300 text-sm group-hover:text-white transition-colors">Students</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">1.2k+</div>
-                  <div className="text-blue-200 text-sm">Instructors</div>
+                <div className="text-center group">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">1.2k+</div>
+                  <div className="text-gray-300 text-sm group-hover:text-white transition-colors">Instructors</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">10k+</div>
-                  <div className="text-blue-200 text-sm">Courses</div>
+                <div className="text-center group">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">10k+</div>
+                  <div className="text-gray-300 text-sm group-hover:text-white transition-colors">Courses</div>
                 </div>
               </div>
             </div>
 
             <div className="relative">
-              <div className="relative z-10">
+              <div className="relative z-10 transform hover:scale-105 transition-transform duration-500">
                 <Image
                   src="https://images.pexels.com/photos/5212324/pexels-photo-5212324.jpeg?auto=compress&cs=tinysrgb&w=800"
                   alt="Students learning online"
                   width={600}
                   height={400}
-                  className="rounded-2xl shadow-2xl"
+                  className="rounded-2xl shadow-2xl border border-white/20"
                 />
               </div>
               {/* Floating elements */}
-              <div className="absolute -top-4 -left-4 w-24 h-24 bg-yellow-400 rounded-full opacity-80 animate-pulse" />
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-green-400 rounded-full opacity-60 animate-pulse delay-1000" />
+              <div className="absolute -top-4 -left-4 w-24 h-24 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full opacity-80 animate-bounce" />
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full opacity-60 animate-bounce delay-1000" />
+              <div className="absolute top-1/2 -right-8 w-16 h-16 bg-gradient-to-r from-green-400 to-cyan-400 rounded-full opacity-70 animate-bounce delay-500" />
             </div>
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-muted/30">
+      <section className="py-16 bg-gradient-to-r from-gray-50 to-blue-50">
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredStats.map((stat, index) => (
-              <StatsCard key={index} {...stat} />
+              <div key={index} className="transform hover:scale-105 transition-transform duration-300">
+                <StatsCard {...stat} />
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* Featured Courses Section */}
-      <section className="py-16">
+      <section className="py-20 bg-white">
         <div className="container">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent">
               Featured Courses
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Discover our most popular courses taught by industry experts
             </p>
           </div>
@@ -252,25 +260,29 @@ export default function Home() {
           )}
 
           {/* Search and Filter */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-8">
+          <div className="flex flex-col lg:flex-row gap-6 mb-12">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 placeholder="Search courses..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 text-lg"
+                className="pl-10 h-14 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl shadow-sm"
               />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <Filter className="h-5 w-5 text-muted-foreground" />
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {categories.map((category) => (
                   <Button
                     key={category}
                     variant={selectedCategory === category ? "default" : "outline"}
                     onClick={() => setSelectedCategory(category)}
-                    className="h-12"
+                    className={`h-12 px-6 rounded-xl transition-all duration-300 ${
+                      selectedCategory === category 
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105' 
+                        : 'border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
                   >
                     {category}
                   </Button>
@@ -281,29 +293,47 @@ export default function Home() {
 
           {/* Course Grid */}
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center h-80">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-32 w-32 border-4 border-blue-200"></div>
+                <div className="animate-spin rounded-full h-32 w-32 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+              </div>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {filteredCourses.map((course) => (
-                  <CourseCard key={course.id} course={course} />
+                  <div key={course.id} className="transform hover:scale-105 transition-all duration-300 hover:shadow-2xl">
+                    <CourseCard course={course} />
+                  </div>
                 ))}
               </div>
 
               {filteredCourses.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-lg text-muted-foreground">
+                <div className="text-center py-20">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">No courses found</h3>
+                  <p className="text-lg text-gray-600 mb-6">
                     No courses found matching your criteria.
                   </p>
+                  <Button 
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedCategory('All Categories');
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                  >
+                    Clear Filters
+                  </Button>
                 </div>
               )}
             </>
           )}
 
           <div className="text-center mt-12">
-            <Button asChild size="lg" className="text-lg px-8 py-6">
+            <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg px-12 py-6 rounded-xl shadow-xl transform hover:scale-105 transition-all duration-300">
               <Link href="/courses">
                 View All Courses
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -314,22 +344,26 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+      <section className="py-24 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-10 right-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
         <div className="container text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold mb-6 relative z-10">
             Ready to Start Your Learning Journey?
           </h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto text-blue-100">
+          <p className="text-xl mb-10 max-w-3xl mx-auto text-gray-200 leading-relaxed relative z-10">
             Join thousands of successful students who have transformed their careers through our platform.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6" asChild>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center relative z-10">
+            <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-10 py-6 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-300" asChild>
               <Link href="/auth/register">Get Started Free</Link>
             </Button>
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-white text-white hover:bg-white hover:text-blue-600 text-lg px-8 py-6"
+              className="border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm text-lg px-10 py-6 rounded-xl transform hover:scale-105 transition-all duration-300"
               asChild
             >
               <Link href="/courses">Learn More</Link>

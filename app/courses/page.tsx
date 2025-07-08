@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal, Grid, List } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, Grid, List, Star, Clock, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CourseCard } from '@/components/ui/course-card';
-import { strapiAPI } from '@/lib/strapi';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Course } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth';
+import { mockCourses, getMockCoursesByCategory } from '@/lib/mock-data';
+import Link from 'next/link';
 
 const categories = [
   'All Categories',
@@ -33,7 +34,6 @@ const sortOptions = [
 ];
 
 export default function CoursesPage() {
-  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,59 +52,17 @@ export default function CoursesPage() {
       setLoading(true);
       setError(null);
 
-      const filters: any = {
-        instructor: user?.id,
-      };
-      if (selectedCategory !== 'All Categories') {
-        filters.category = selectedCategory;
-      }
+      // Use mock data for now
+      let coursesToShow = getMockCoursesByCategory(selectedCategory);
+      
+      // Apply level filter
       if (selectedLevel !== 'All Levels') {
-        filters.level = selectedLevel.toLowerCase();
+        coursesToShow = coursesToShow.filter(course => 
+          course.level.toLowerCase() === selectedLevel.toLowerCase()
+        );
       }
-      if (searchQuery) {
-        filters.title = searchQuery;
-      }
-
-      const response = await strapiAPI.getCourses({
-        page: 1,
-        pageSize: 50,
-        filters,
-      });
-
-      const transformedCourses: Course[] = response.data?.map(course => ({
-        id: course.id.toString(),
-        title: course.attributes.title,
-        description: course.attributes.description,
-        instructor: {
-          id: course.attributes.instructor?.data?.id.toString() || '1',
-          name: course.attributes.instructor?.data?.attributes.username || 'Unknown Instructor',
-          email: course.attributes.instructor?.data?.attributes.email || '',
-          role: 'instructor' as const,
-          avatar: course.attributes.instructor?.data?.attributes.profile?.avatar?.url,
-          createdAt: new Date().toISOString(),
-        },
-        thumbnail: course.attributes.thumbnail?.data?.attributes.url || 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800',
-        price: course.attributes.price,
-        category: course.attributes.category,
-        level: course.attributes.level as 'beginner' | 'intermediate' | 'advanced',
-        duration: course.attributes.duration || 0,
-        lessonsCount: course.attributes.lessons?.data?.length || 0,
-        studentsCount: course.attributes.studentsCount || 0,
-        rating: course.attributes.rating || 0,
-        reviewsCount: course.attributes.reviewsCount || 0,
-        tags: course.attributes.tags || [],
-        createdAt: course.attributes.createdAt,
-        lessons: course.attributes.lessons?.data?.map(lesson => ({
-          id: lesson.id.toString(),
-          title: lesson.attributes.title,
-          description: lesson.attributes.description,
-          duration: lesson.attributes.duration,
-          order: lesson.attributes.order,
-          videoUrl: lesson.attributes.videoUrl,
-        })) || [],
-      })) || [];
-
-      setCourses(transformedCourses);
+      
+      setCourses(coursesToShow);
     } catch (err) {
       console.error('Error fetching courses:', err);
       setError('Failed to load courses. Please check your connection.');
@@ -136,36 +94,50 @@ export default function CoursesPage() {
     }
   });
 
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return hours > 0 ? `${hours}h ${remainingMinutes}m` : `${minutes}m`;
+  };
+
   if (loading) {
     return (
-      <div className="container py-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="container py-8">
+          <div className="flex items-center justify-center h-80">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-32 w-32 border-4 border-blue-200"></div>
+              <div className="animate-spin rounded-full h-32 w-32 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">All Courses</h1>
-        <p className="text-muted-foreground">
-          Discover {courses.length} courses from expert instructors
+      <div className="mb-12 text-center">
+        <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent">
+          All Courses
+        </h1>
+        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          Discover {mockCourses.length} courses from expert instructors across all categories
         </p>
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-8">
+        <Alert variant="destructive" className="mb-8 max-w-2xl mx-auto">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {/* Search and Filters */}
-      <Card className="border-0 shadow-md mb-8">
+      <Card className="border-0 shadow-xl mb-12 bg-white/80 backdrop-blur-sm">
         <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -173,13 +145,13 @@ export default function CoursesPage() {
                 placeholder="Search courses, instructors, or topics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12"
+                className="pl-10 h-14 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl"
               />
             </div>
 
             {/* Category Filter */}
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full lg:w-48 h-12">
+              <SelectTrigger className="w-full lg:w-48 h-14 border-2 border-gray-200 rounded-xl">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -193,7 +165,7 @@ export default function CoursesPage() {
 
             {/* Level Filter */}
             <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-              <SelectTrigger className="w-full lg:w-48 h-12">
+              <SelectTrigger className="w-full lg:w-48 h-14 border-2 border-gray-200 rounded-xl">
                 <SelectValue placeholder="Level" />
               </SelectTrigger>
               <SelectContent>
@@ -207,7 +179,7 @@ export default function CoursesPage() {
 
             {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full lg:w-48 h-12">
+              <SelectTrigger className="w-full lg:w-48 h-14 border-2 border-gray-200 rounded-xl">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -223,28 +195,28 @@ export default function CoursesPage() {
       </Card>
 
       {/* Results Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
-          <p className="text-muted-foreground">
-            Showing {sortedCourses.length} of {courses.length} courses
+          <p className="text-lg text-gray-600">
+            Showing <span className="font-semibold text-blue-600">{sortedCourses.length}</span> of <span className="font-semibold">{mockCourses.length}</span> courses
           </p>
           {selectedCategory !== 'All Categories' && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800">
               {selectedCategory}
               <button
                 onClick={() => setSelectedCategory('All Categories')}
-                className="ml-2 text-xs hover:text-destructive"
+                className="ml-2 text-xs hover:text-red-600 transition-colors"
               >
                 ×
               </button>
             </Badge>
           )}
           {selectedLevel !== 'All Levels' && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="px-3 py-1 bg-purple-100 text-purple-800">
               {selectedLevel}
               <button
                 onClick={() => setSelectedLevel('All Levels')}
-                className="ml-2 text-xs hover:text-destructive"
+                className="ml-2 text-xs hover:text-red-600 transition-colors"
               >
                 ×
               </button>
@@ -257,6 +229,7 @@ export default function CoursesPage() {
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('grid')}
+            className={`${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'border-2 border-gray-200'} rounded-lg`}
           >
             <Grid className="h-4 w-4" />
           </Button>
@@ -264,6 +237,7 @@ export default function CoursesPage() {
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
+            className={`${viewMode === 'list' ? 'bg-blue-600 text-white' : 'border-2 border-gray-200'} rounded-lg`}
           >
             <List className="h-4 w-4" />
           </Button>
@@ -272,33 +246,117 @@ export default function CoursesPage() {
 
       {/* Course Grid/List */}
       {sortedCourses.length > 0 ? (
-        <div className={
-          viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-            : 'space-y-4'
-        }>
-          {sortedCourses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </div>
+        <>
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {sortedCourses.map((course) => (
+                <div key={course.id} className="transform hover:scale-105 transition-all duration-300">
+                  <CourseCard course={course} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {sortedCourses.map((course) => (
+                <Card key={course.id} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white/90 backdrop-blur-sm">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="md:w-80 flex-shrink-0">
+                        <img
+                          src={course.thumbnail}
+                          alt={course.title}
+                          className="w-full h-48 md:h-full object-cover rounded-xl"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        <div>
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                              <Link href={`/courses/${course.id}`}>
+                                {course.title}
+                              </Link>
+                            </h3>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">${course.price}</div>
+                            </div>
+                          </div>
+                          <p className="text-gray-600 line-clamp-2 mb-4">{course.description}</p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 mb-4">
+                          <div className="flex items-center space-x-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={course.instructor.avatar} alt={course.instructor.name} />
+                              <AvatarFallback>
+                                {course.instructor.name.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-gray-700">{course.instructor.name}</span>
+                          </div>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {course.category}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-purple-50 text-purple-700">
+                            {course.level}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-6 text-sm text-gray-600">
+                            <div className="flex items-center space-x-1">
+                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <span className="font-medium">{course.rating}</span>
+                              <span>({course.reviewsCount})</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Users className="h-4 w-4" />
+                              <span>{course.studentsCount.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{formatDuration(course.duration)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <BookOpen className="h-4 w-4" />
+                              <span>{course.lessonsCount} lessons</span>
+                            </div>
+                          </div>
+                          <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl">
+                            <Link href={`/courses/${course.id}`}>
+                              View Course
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="h-8 w-8 text-muted-foreground" />
+        <div className="text-center py-20">
+          <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-8">
+            <Search className="h-16 w-16 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">No courses found</h3>
-          <p className="text-muted-foreground mb-4">
+          <h3 className="text-3xl font-bold text-gray-900 mb-4">No courses found</h3>
+          <p className="text-xl text-gray-600 mb-8 max-w-md mx-auto">
             Try adjusting your search criteria or explore different categories
           </p>
-          <Button onClick={() => {
-            setSearchQuery('');
-            setSelectedCategory('All Categories');
-            setSelectedLevel('All Levels');
-          }}>
+          <Button 
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('All Categories');
+              setSelectedLevel('All Levels');
+            }}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300"
+          >
             Clear Filters
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 }
