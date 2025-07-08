@@ -258,6 +258,8 @@ class StrapiAPI {
       const response = await fetch(url, {
         ...options,
         headers,
+        // Add timeout and better error handling
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
       const responseText = await response.text();
@@ -287,8 +289,18 @@ class StrapiAPI {
       const data = JSON.parse(responseText);
       console.log('✅ Strapi API: Request successful');
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Strapi API: Request failed:', error);
+      
+      // Handle specific error types
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+        throw new Error('Request timeout - please check if Strapi server is running');
+      }
+      
+      if (error.message?.includes('fetch')) {
+        throw new Error('Unable to connect to Strapi server - please ensure it is running at ' + this.baseURL);
+      }
+      
       throw error;
     }
   }
