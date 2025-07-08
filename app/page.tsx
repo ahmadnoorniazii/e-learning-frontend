@@ -11,6 +11,7 @@ import { StatsCard } from '@/components/ui/stats-card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { strapiAPI } from '@/lib/strapi';
 import { Course } from '@/lib/types';
+import { mockCourses, getMockCoursesByCategory } from '@/lib/mock-data';
 
 const categories = [
   'All Categories',
@@ -59,6 +60,7 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [useMockData, setUseMockData] = useState(false);
 
   useEffect(() => {
     fetchFeaturedCourses();
@@ -68,6 +70,14 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
+
+      // If we're already using mock data, continue using it
+      if (useMockData) {
+        const mockData = getMockCoursesByCategory(selectedCategory);
+        setCourses(mockData);
+        setLoading(false);
+        return;
+      }
 
       const filters: any = {};
       if (selectedCategory !== 'All Categories') {
@@ -116,7 +126,19 @@ export default function Home() {
       setCourses(transformedCourses);
     } catch (err) {
       console.error('Error fetching courses:', err);
-      setError('Failed to load courses. Please check your connection.');
+      
+      // Check if this is a connection error
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      if (errorMessage.includes('connect') || errorMessage.includes('fetch') || errorMessage.includes('timeout')) {
+        console.log('🔄 Strapi server not available, switching to mock data');
+        setUseMockData(true);
+        const mockData = getMockCoursesByCategory(selectedCategory);
+        setCourses(mockData);
+        setError('Demo mode: Using sample data. To connect to Strapi, ensure your backend server is running at http://localhost:1337');
+      } else {
+        setError(`Failed to load courses: ${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }

@@ -27,142 +27,166 @@ export const mockUsers: User[] = [
   }
 ];
 
-export const mockCourses: Course[] = [
+// Mock course data for when Strapi is not available
+export const mockCourses = [
   {
     id: '1',
-    title: 'Complete React Development Course',
-    description: 'Master React from fundamentals to advanced concepts. Build real-world projects and learn modern React patterns, hooks, and best practices.',
-    instructor: mockUsers[1],
+    title: 'Complete Web Development Bootcamp',
+    description: 'Learn HTML, CSS, JavaScript, React, Node.js and more in this comprehensive course.',
+    instructor: {
+      id: '1',
+      name: 'Sarah Johnson',
+      email: 'sarah@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
     thumbnail: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800',
     price: 99.99,
     category: 'Web Development',
-    level: 'intermediate',
-    duration: 1200, // 20 hours
-    lessonsCount: 24,
-    studentsCount: 1542,
+    level: 'beginner' as const,
+    duration: 40,
+    lessonsCount: 120,
+    studentsCount: 15420,
     rating: 4.8,
-    reviewsCount: 234,
-    tags: ['React', 'JavaScript', 'Frontend', 'Web Development'],
-    createdAt: '2024-01-20',
-    isEnrolled: true,
-    lessons: [
-      {
-        id: '1-1',
-        title: 'Introduction to React',
-        description: 'Learn the basics of React and why it\'s popular',
-        duration: 45,
-        order: 1
-      },
-      {
-        id: '1-2',
-        title: 'JSX and Components',
-        description: 'Understanding JSX syntax and creating components',
-        duration: 60,
-        order: 2
-      },
-      {
-        id: '1-3',
-        title: 'State and Props',
-        description: 'Managing component state and passing data with props',
-        duration: 50,
-        order: 3
-      }
-    ]
+    reviewsCount: 2341,
+    tags: ['HTML', 'CSS', 'JavaScript', 'React'],
+    createdAt: new Date().toISOString(),
+    lessons: []
   },
   {
     id: '2',
-    title: 'Python for Data Science',
-    description: 'Learn Python programming specifically for data science applications. Cover pandas, numpy, matplotlib, and machine learning basics.',
-    instructor: mockUsers[1],
-    thumbnail: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=800',
-    price: 79.99,
+    title: 'Data Science with Python',
+    description: 'Master data analysis, visualization, and machine learning with Python.',
+    instructor: {
+      id: '2',
+      name: 'Dr. Michael Chen',
+      email: 'michael@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
+    thumbnail: 'https://images.pexels.com/photos/590022/pexels-photo-590022.jpeg?auto=compress&cs=tinysrgb&w=800',
+    price: 129.99,
     category: 'Data Science',
-    level: 'beginner',
-    duration: 900, // 15 hours
-    lessonsCount: 18,
-    studentsCount: 892,
-    rating: 4.6,
-    reviewsCount: 156,
-    tags: ['Python', 'Data Science', 'Analytics', 'Machine Learning'],
-    createdAt: '2024-01-18',
-    isEnrolled: true,
-    lessons: [
-      {
-        id: '2-1',
-        title: 'Python Fundamentals',
-        description: 'Basic Python syntax and concepts',
-        duration: 60,
-        order: 1
-      },
-      {
-        id: '2-2',
-        title: 'Working with Data',
-        description: 'Introduction to pandas and data manipulation',
-        duration: 75,
-        order: 2
-      }
-    ]
+    level: 'intermediate' as const,
+    duration: 35,
+    lessonsCount: 95,
+    studentsCount: 8750,
+    rating: 4.9,
+    reviewsCount: 1876,
+    tags: ['Python', 'Pandas', 'NumPy', 'Machine Learning'],
+    createdAt: new Date().toISOString(),
+    lessons: []
   },
   {
     id: '3',
-    title: 'UI/UX Design Masterclass',
-    description: 'Complete guide to user interface and user experience design. Learn design thinking, prototyping, and creating beautiful, functional designs.',
-    instructor: mockUsers[1],
+    title: 'UI/UX Design Fundamentals',
+    description: 'Learn the principles of user interface and user experience design.',
+    instructor: {
+      id: '3',
+      name: 'Emma Rodriguez',
+      email: 'emma@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
     thumbnail: 'https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=800',
-    price: 89.99,
+    price: 79.99,
     category: 'Design',
-    level: 'intermediate',
-    duration: 1080, // 18 hours
-    lessonsCount: 21,
-    studentsCount: 1234,
-    rating: 4.9,
-    reviewsCount: 298,
-    tags: ['UI Design', 'UX Design', 'Figma', 'Prototyping'],
-    createdAt: '2024-01-22',
-    lessons: [
-      {
-        id: '3-1',
-        title: 'Design Principles',
-        description: 'Fundamental principles of good design',
-        duration: 45,
-        order: 1
-      },
-      {
-        id: '3-2',
-        title: 'User Research',
-        description: 'Understanding your users through research',
-        duration: 55,
-        order: 2
-      }
-    ]
+    level: 'beginner' as const,
+    duration: 25,
+    lessonsCount: 68,
+    studentsCount: 12300,
+    rating: 4.7,
+    reviewsCount: 1543,
+    tags: ['Figma', 'Adobe XD', 'Prototyping', 'User Research'],
+    createdAt: new Date().toISOString(),
+    lessons: []
   },
   {
     id: '4',
-    title: 'Digital Marketing Strategy',
-    description: 'Comprehensive digital marketing course covering SEO, social media, content marketing, and analytics to grow your business online.',
-    instructor: mockUsers[1],
-    thumbnail: 'https://images.pexels.com/photos/270637/pexels-photo-270637.jpeg?auto=compress&cs=tinysrgb&w=800',
-    price: 69.99,
+    title: 'Digital Marketing Mastery',
+    description: 'Complete guide to digital marketing including SEO, social media, and PPC.',
+    instructor: {
+      id: '4',
+      name: 'James Wilson',
+      email: 'james@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
+    thumbnail: 'https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg?auto=compress&cs=tinysrgb&w=800',
+    price: 89.99,
     category: 'Marketing',
-    level: 'beginner',
-    duration: 720, // 12 hours
-    lessonsCount: 15,
-    studentsCount: 756,
-    rating: 4.5,
-    reviewsCount: 123,
-    tags: ['Digital Marketing', 'SEO', 'Social Media', 'Analytics'],
-    createdAt: '2024-01-25',
-    lessons: [
-      {
-        id: '4-1',
-        title: 'Marketing Fundamentals',
-        description: 'Introduction to digital marketing concepts',
-        duration: 40,
-        order: 1
-      }
-    ]
+    level: 'intermediate' as const,
+    duration: 30,
+    lessonsCount: 85,
+    studentsCount: 9650,
+    rating: 4.6,
+    reviewsCount: 1287,
+    tags: ['SEO', 'Google Ads', 'Social Media', 'Analytics'],
+    createdAt: new Date().toISOString(),
+    lessons: []
+  },
+  {
+    id: '5',
+    title: 'Business Strategy & Leadership',
+    description: 'Develop essential business and leadership skills for career advancement.',
+    instructor: {
+      id: '5',
+      name: 'Lisa Thompson',
+      email: 'lisa@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
+    thumbnail: 'https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=800',
+    price: 149.99,
+    category: 'Business',
+    level: 'advanced' as const,
+    duration: 45,
+    lessonsCount: 110,
+    studentsCount: 6420,
+    rating: 4.8,
+    reviewsCount: 892,
+    tags: ['Strategy', 'Leadership', 'Management', 'Communication'],
+    createdAt: new Date().toISOString(),
+    lessons: []
+  },
+  {
+    id: '6',
+    title: 'Photography Masterclass',
+    description: 'From basics to advanced techniques in digital photography.',
+    instructor: {
+      id: '6',
+      name: 'Alex Parker',
+      email: 'alex@example.com',
+      role: 'instructor' as const,
+      avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150',
+      createdAt: new Date().toISOString()
+    },
+    thumbnail: 'https://images.pexels.com/photos/606541/pexels-photo-606541.jpeg?auto=compress&cs=tinysrgb&w=800',
+    price: 69.99,
+    category: 'Photography',
+    level: 'beginner' as const,
+    duration: 28,
+    lessonsCount: 75,
+    studentsCount: 11200,
+    rating: 4.9,
+    reviewsCount: 1654,
+    tags: ['DSLR', 'Composition', 'Lighting', 'Post-processing'],
+    createdAt: new Date().toISOString(),
+    lessons: []
   }
 ];
+
+export const getMockCoursesByCategory = (category: string) => {
+  if (category === 'All Categories') {
+    return mockCourses;
+  }
+  return mockCourses.filter(course => course.category === category);
+};
 
 export const mockReviews: Review[] = [
   {
