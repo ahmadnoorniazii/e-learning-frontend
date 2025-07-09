@@ -72,8 +72,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto py-8">
         <div className="max-w-6xl mx-auto">
           {/* Profile Header */}
           <Card className="border-0 shadow-xl mb-8 bg-white/90 backdrop-blur-sm">

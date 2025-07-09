@@ -147,7 +147,7 @@ console.log('courses',courses);
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-white">
-        <div className="container py-6">
+        <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Instructor Dashboard</h1>
@@ -165,7 +165,7 @@ console.log('courses',courses);
         </div>
       </div>
 
-      <div className="container py-8">
+      <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {error && (
           <Alert variant="destructive" className="mb-8">
             <AlertDescription>{error}</AlertDescription>

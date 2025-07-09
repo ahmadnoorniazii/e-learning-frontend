@@ -153,7 +153,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white overflow-hidden px-10">
+      <section className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white overflow-hidden">
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -177,7 +177,7 @@ export default function Home() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
+                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
                   <Link href="/courses">
                     Start Learning Today
                     <ArrowRight className="ml-2 h-5 w-5" />
@@ -186,7 +186,7 @@ export default function Home() {
                 <Button 
                   variant="outline"
                   size="lg" 
-                  className="border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
+                  className="border-2 border-white/40 text-white hover:bg-white/20 hover:text-white hover:border-white/60 backdrop-blur-sm font-semibold text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
                   asChild
                 >
                   <Link href="/courses">Browse Courses</Link>
@@ -324,13 +324,13 @@ export default function Home() {
             Join thousands of successful students who have transformed their careers through our platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center relative z-10">
-            <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
+            <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-semibold text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
               <Link href="/auth/register">Get Started Free</Link>
             </Button>
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
+              className="border-2 border-white/40 text-white hover:bg-white/20 hover:text-white hover:border-white/60 backdrop-blur-sm font-semibold text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
               asChild
             >
               <Link href="/courses">Learn More</Link>

@@ -5,26 +5,26 @@ const footerLinks = {
   platform: [
     { name: 'Courses', href: '/courses' },
     { name: 'Instructors', href: '/instructors' },
-    { name: 'Categories', href: '/categories' },
-    { name: 'Pricing', href: '/pricing' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' },
   ],
   support: [
-    { name: 'Help Center', href: '/help' },
+    { name: 'Help Center', href: '/support' },
     { name: 'Contact Us', href: '/contact' },
-    { name: 'Status', href: '/status' },
-    { name: 'Documentation', href: '/docs' },
+    { name: 'FAQ', href: '/faq' },
+    { name: 'Support', href: '/support' },
   ],
   company: [
     { name: 'About', href: '/about' },
-    { name: 'Blog', href: '/blog' },
     { name: 'Careers', href: '/careers' },
-    { name: 'Press', href: '/press' },
+    { name: 'Blog', href: '/blog' },
+    { name: 'News', href: '/news' },
   ],
   legal: [
     { name: 'Privacy Policy', href: '/privacy' },
     { name: 'Terms of Service', href: '/terms' },
-    { name: 'Cookie Policy', href: '/cookies' },
-    { name: 'GDPR', href: '/gdpr' },
+    { name: 'Cookie Policy', href: '/privacy' },
+    { name: 'Refund Policy', href: '/refund' },
   ],
 };
 
@@ -37,8 +37,8 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="bg-muted/30 border-t px-4 sm:px-6 lg:px-8">
-      <div className="container py-12 md:py-16">
+    <footer className="bg-muted/30 border-t">
+      <div className="container mx-auto py-12 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand */}
           <div className="lg:col-span-2">

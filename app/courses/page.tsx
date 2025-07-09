@@ -117,7 +117,7 @@ export default function CoursesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container py-8">
+      <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-12 text-center">
         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-900 via-purple-900 to-indigo-900 bg-clip-text text-transparent">
@@ -251,7 +251,9 @@ export default function CoursesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {sortedCourses.map((course) => (
                 <div key={course.id} className="transform hover:scale-105 transition-all duration-300">
-                  <CourseCard course={course} />
+                  <div className="h-full">
+                    <CourseCard course={course} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -302,7 +304,7 @@ export default function CoursesPage() {
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-6 text-sm text-gray-600">
+                          <div className="flex items-center space-x-6 text-sm text-gray-600 flex-1">
                             <div className="flex items-center space-x-1">
                               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                               <span className="font-medium">{course.rating}</span>
@@ -321,7 +323,7 @@ export default function CoursesPage() {
                               <span>{course.lessonsCount} lessons</span>
                             </div>
                           </div>
-                          <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl">
+                          <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl ml-4 flex-shrink-0">
                             <Link href={`/courses/${course.id}`}>
                               View Course
                             </Link>

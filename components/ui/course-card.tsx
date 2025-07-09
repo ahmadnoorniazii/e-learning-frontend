@@ -19,7 +19,7 @@ export function CourseCard({ course }: CourseCardProps) {
   };
 
   return (
-    <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group bg-white overflow-hidden">
+    <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group bg-white overflow-hidden h-full flex flex-col">
       <Link href={`/courses/${course.id}`}>
         <div className="relative overflow-hidden">
           <img
@@ -41,7 +41,7 @@ export function CourseCard({ course }: CourseCardProps) {
         </div>
       </Link>
       
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-6 space-y-4 flex-1 flex flex-col">
         <div>
           <Link href={`/courses/${course.id}`}>
             <h3 className="font-bold text-xl line-clamp-2 group-hover:text-blue-600 transition-colors duration-300 mb-2">
@@ -92,7 +92,7 @@ export function CourseCard({ course }: CourseCardProps) {
           </div>
         </div>
         
-        <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300">
+        <Button asChild className="w-full mt-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 mt-auto">
           <Link href={`/courses/${course.id}`}>
             View Course
           </Link>

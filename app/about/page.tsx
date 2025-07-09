@@ -71,7 +71,7 @@ export default function AboutPage() {
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
         </div>
-        <div className="relative container py-20 md:py-32">
+        <div className="relative container mx-auto py-20 md:py-32 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-6">
               Empowering Learners
@@ -92,7 +92,7 @@ export default function AboutPage() {
 
       {/* Stats Section */}
       <section className="py-16 bg-white">
-        <div className="container">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
@@ -112,7 +112,7 @@ export default function AboutPage() {
 
       {/* Mission Section */}
       <section className="py-20 bg-gradient-to-r from-gray-50 to-blue-50">
-        <div className="container">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
@@ -155,7 +155,7 @@ export default function AboutPage() {
 
       {/* Values Section */}
       <section className="py-20 bg-white">
-        <div className="container">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Values</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -183,7 +183,7 @@ export default function AboutPage() {
 
       {/* Team Section */}
       <section className="py-20 bg-gradient-to-r from-gray-50 to-blue-50">
-        <div className="container">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">Meet Our Team</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -219,7 +219,7 @@ export default function AboutPage() {
           <div className="absolute top-10 left-10 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute bottom-10 right-10 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
         </div>
-        <div className="container text-center relative z-10">
+        <div className="container mx-auto text-center relative z-10 px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
             Join Our Learning Community
           </h2>
@@ -234,7 +234,7 @@ export default function AboutPage() {
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
+              className="border-2 border-white/40 text-white hover:bg-white/20 hover:text-white hover:border-white/60 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
               asChild
             >
               <Link href="/courses">Browse Courses</Link>

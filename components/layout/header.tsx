@@ -69,28 +69,38 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 lg:px-8">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/95 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-purple-600">
             <BookOpen className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <span className="font-bold text-xl text-white">
             EduPlatform
           </span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-6">
+          <Link
+            href="/instructors"
+            className={`text-sm font-medium transition-colors hover:text-primary ${
+              pathname === '/instructors'
+                ? 'text-blue-400'
+                : 'text-gray-300 hover:text-white'
+            }`}
+          >
+            Instructors
+          </Link>
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 pathname === item.href
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+                  ? 'text-blue-400'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               {item.name}
@@ -101,8 +111,8 @@ export function Header() {
               onClick={handleDashboardClick}
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 isDashboardActive()
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+                  ? 'text-blue-400'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               {getDashboardLabel()}
@@ -115,8 +125,8 @@ export function Header() {
               href="/test-api"
               className={`text-sm font-medium transition-colors hover:text-primary ${
                 pathname === '/test-api'
-                  ? 'text-primary'
-                  : 'text-muted-foreground'
+                  ? 'text-blue-400'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               <TestTube className="h-4 w-4 inline mr-1" />
@@ -132,7 +142,7 @@ export function Header() {
               {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative hidden md:flex">
+                  <Button variant="ghost" size="icon" className="relative hidden md:flex text-gray-300 hover:text-white">
                     <Bell className="h-5 w-5" />
                     <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
                       2
@@ -221,10 +231,10 @@ export function Header() {
             </>
           ) : (
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" asChild className="text-gray-300 hover:text-white">
                 <Link href="/auth/login">Sign In</Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 <Link href="/auth/register">Sign Up</Link>
               </Button>
             </div>
@@ -234,7 +244,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden"
+            className="md:hidden text-gray-300 hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -248,8 +258,8 @@ export function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background">
-          <div className="container py-4 space-y-4">
+        <div className="md:hidden border-t bg-gray-900">
+          <div className="container mx-auto py-4 space-y-4">
             {/* Mobile Navigation */}
             <nav className="flex flex-col space-y-2">
               {navigation.map((item) => (
@@ -259,8 +269,8 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
                     pathname === item.href
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-primary hover:bg-muted'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                 >
                   {item.name}
@@ -275,8 +285,8 @@ export function Header() {
                   }}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
                     isDashboardActive()
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-primary hover:bg-muted'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                 >
                   {getDashboardLabel()}
@@ -289,8 +299,8 @@ export function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
                     pathname === '/test-api'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-primary hover:bg-muted'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                 >
                   <TestTube className="h-4 w-4 inline mr-2" />
@@ -300,12 +310,12 @@ export function Header() {
               
               {!isAuthenticated && (
                 <div className="flex flex-col space-y-2 pt-4 border-t">
-                  <Button variant="ghost" asChild className="justify-start">
+                  <Button variant="ghost" asChild className="justify-start text-gray-300 hover:text-white">
                     <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                       Sign In
                     </Link>
                   </Button>
-                  <Button asChild className="justify-start">
+                  <Button asChild className="justify-start bg-gradient-to-r from-blue-600 to-purple-600">
                     <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
                       Sign Up
                     </Link>
