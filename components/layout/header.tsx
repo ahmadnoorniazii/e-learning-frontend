@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, BookOpen, Menu, Search, User, X, LogOut, TestTube } from 'lucide-react';
+import { Bell, BookOpen, Menu, User, X, LogOut, TestTube, Settings, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,13 @@ const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Courses', href: '/courses' },
   { name: 'About', href: '/about' },
+];
+
+const mockNotifications = [
+  { id: '1', title: 'New course available', message: 'Advanced React Development is now live', time: '2 hours ago', unread: true },
+  { id: '2', title: 'Assignment due soon', message: 'JavaScript Fundamentals assignment due tomorrow', time: '1 day ago', unread: true },
+  { id: '3', title: 'Course completed', message: 'Congratulations on completing Python Basics', time: '3 days ago', unread: false },
+  { id: '4', title: 'New message', message: 'Instructor replied to your question', time: '1 week ago', unread: false },
 ];
 
 export function Header() {
@@ -62,7 +69,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 lg:px-8">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
@@ -118,31 +125,49 @@ export function Header() {
           )}
         </nav>
 
-        {/* Search Bar */}
-        <div className="hidden lg:flex items-center space-x-4 flex-1 max-w-md mx-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search courses..."
-              className="pl-10 bg-muted/50 border-0 focus:bg-background"
-            />
-          </div>
-        </div>
-
         {/* Right Side */}
         <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
               {/* Notifications */}
-              <Button variant="ghost" size="icon" className="hidden md:flex">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative hidden md:flex">
+                    <Bell className="h-5 w-5" />
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                      2
+                    </Badge>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80" align="end" forceMount>
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <h3 className="font-semibold">Notifications</h3>
+                    <Link href="/notifications" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {mockNotifications.slice(0, 4).map((notification) => (
+                      <div key={notification.id} className={`p-4 border-b hover:bg-muted/50 cursor-pointer ${notification.unread ? 'bg-blue-50/50' : ''}`}>
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{notification.title}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all">
+                    <Avatar className="h-10 w-10">
                       <AvatarImage src={user?.avatar} alt={user?.name} />
                       <AvatarFallback>
                         {user?.name?.split(' ').map(n => n[0]).join('')}
@@ -164,13 +189,19 @@ export function Header() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">Profile</Link>
+                    <Link href="/profile" className="flex items-center">
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDashboardClick}>
                     {getDashboardLabel()}
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/settings">Settings</Link>
+                    <Link href="/profile/settings" className="flex items-center">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Link>
                   </DropdownMenuItem>
                   {process.env.NODE_ENV === 'development' && (
                     <DropdownMenuItem asChild>
@@ -219,15 +250,6 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-background">
           <div className="container py-4 space-y-4">
-            {/* Mobile Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                className="pl-10 bg-muted/50 border-0"
-              />
-            </div>
-            
             {/* Mobile Navigation */}
             <nav className="flex flex-col space-y-2">
               {navigation.map((item) => (

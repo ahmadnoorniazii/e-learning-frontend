@@ -153,7 +153,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white overflow-hidden px-10">
         <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -177,7 +177,7 @@ export default function Home() {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-8 py-6 shadow-2xl transform hover:scale-105 transition-all duration-300" asChild>
+                <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
                   <Link href="/courses">
                     Start Learning Today
                     <ArrowRight className="ml-2 h-5 w-5" />
@@ -186,7 +186,7 @@ export default function Home() {
                 <Button 
                   variant="outline"
                   size="lg" 
-                  className="border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm text-lg px-8 py-6 transform hover:scale-105 transition-all duration-300"
+                  className="border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
                   asChild
                 >
                   <Link href="/courses">Browse Courses</Link>
@@ -259,35 +259,23 @@ export default function Home() {
             </Alert>
           )}
 
-          {/* Search and Filter */}
-          <div className="flex flex-col lg:flex-row gap-6 mb-12">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-14 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl shadow-sm"
-              />
-            </div>
-            <div className="flex items-center space-x-3">
-              <Filter className="h-5 w-5 text-muted-foreground" />
-              <div className="flex flex-wrap gap-3">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`h-12 px-6 rounded-xl transition-all duration-300 ${
-                      selectedCategory === category 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105' 
-                        : 'border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    }`}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
+          {/* Category Filter */}
+          <div className="flex justify-center mb-12">
+            <div className="flex flex-wrap gap-3 justify-center">
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`h-12 px-6 rounded-xl transition-all duration-300 ${
+                    selectedCategory === category 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105' 
+                      : 'border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                  }`}
+                >
+                  {category}
+                </Button>
+              ))}
             </div>
           </div>
 
@@ -301,45 +289,24 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                {filteredCourses.map((course) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {filteredCourses.slice(0, 8).map((course) => (
                   <div key={course.id} className="transform hover:scale-105 transition-all duration-300 hover:shadow-2xl">
                     <CourseCard course={course} />
                   </div>
                 ))}
               </div>
 
-              {filteredCourses.length === 0 && (
-                <div className="text-center py-20">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Search className="h-12 w-12 text-gray-400" />
-                  </div>
-                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">No courses found</h3>
-                  <p className="text-lg text-gray-600 mb-6">
-                    No courses found matching your criteria.
-                  </p>
-                  <Button 
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('All Categories');
-                    }}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
+              <div className="text-center mt-12">
+                <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg px-12 py-6 rounded-xl shadow-xl transform hover:scale-105 transition-all duration-300">
+                  <Link href="/courses">
+                    View All Courses
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
             </>
           )}
-
-          <div className="text-center mt-12">
-            <Button asChild size="lg" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg px-12 py-6 rounded-xl shadow-xl transform hover:scale-105 transition-all duration-300">
-              <Link href="/courses">
-                View All Courses
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
         </div>
       </section>
 
@@ -357,13 +324,13 @@ export default function Home() {
             Join thousands of successful students who have transformed their careers through our platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center relative z-10">
-            <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-10 py-6 rounded-xl shadow-2xl transform hover:scale-105 transition-all duration-300" asChild>
+            <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white text-lg px-12 py-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20" asChild>
               <Link href="/auth/register">Get Started Free</Link>
             </Button>
             <Button 
               variant="outline" 
               size="lg" 
-              className="border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm text-lg px-10 py-6 rounded-xl transform hover:scale-105 transition-all duration-300"
+              className="border-2 border-white/40 text-white hover:bg-white/20 backdrop-blur-sm text-lg px-12 py-6 rounded-2xl transform hover:scale-105 transition-all duration-300 shadow-xl"
               asChild
             >
               <Link href="/courses">Learn More</Link>
