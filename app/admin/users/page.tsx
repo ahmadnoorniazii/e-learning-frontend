@@ -34,6 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { strapiAPI } from '@/lib/strapi';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: string;
@@ -60,8 +61,10 @@ export default function UsersPage() {
     password: '',
     role: 'student'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -74,9 +77,19 @@ export default function UsersPage() {
         page: 1,
         pageSize: 100,
       });
-      setUsers(response.data || []);
+      setUsers(
+        (response.data || []).map((user: any) => ({
+          ...user,
+          id: user.id.toString(),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast({
+        title: "Failed to fetch users",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -84,21 +97,57 @@ export default function UsersPage() {
 
   const handleCreateUser = async () => {
     try {
-      await strapiAPI.register(newUser.email, newUser.password, newUser.username, newUser.role as any);
+      setIsSubmitting(true);
+      
+      // Use the registerWithRole method to register a user with a specific role
+      await strapiAPI.registerWithRole(
+        newUser.email, 
+        newUser.password, 
+        newUser.username, 
+        newUser.role as 'student' | 'instructor' | 'admin'
+      );
+      
+      // Show success toast
+      toast({
+        title: "User created successfully",
+        description: `${newUser.username} has been registered with the ${newUser.role} role.`,
+      });
+      
       setIsCreateDialogOpen(false);
       setNewUser({ username: '', email: '', password: '', role: 'student' });
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
+      
+      // Show error toast
+      toast({
+        title: "Failed to create user",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     try {
       await strapiAPI.deleteUser(userId);
+      
+      toast({
+        title: "User deleted successfully",
+        description: "The user has been removed from the platform.",
+      });
+      
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
+      
+      toast({
+        title: "Failed to delete user",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
@@ -192,7 +241,9 @@ export default function UsersPage() {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateUser}>Create User</Button>
+              <Button onClick={handleCreateUser} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create User'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

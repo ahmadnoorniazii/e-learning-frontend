@@ -37,9 +37,49 @@ async function strapiRequest(endpoint: string, options: RequestInit = {}, useAdm
     if (!adminToken) {
       throw new Error('Admin API token not configured');
     }
-    headers.Authorization = `Bearer ${adminToken}`;
+    // Using an object to set the Authorization header properly
+    const headersWithAuth = {
+      ...headers,
+      'Authorization': `Bearer ${adminToken}`
+    };
+    
+    console.log(`🔄 API Request: ${options.method || 'GET'} ${url}`);
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: headersWithAuth,
+    });
+
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch {
+        errorData = {
+          error: {
+            status: response.status,
+            name: 'NetworkError',
+            message: `HTTP ${response.status}: ${response.statusText}`,
+          },
+        };
+      }
+      
+      console.error('❌ Strapi API Error:', errorData);
+      throw new Error(errorData.error?.message || 'API request failed');
+    }
+
+    if (!responseText) {
+      return {};
+    }
+
+    const data = JSON.parse(responseText);
+    console.log('✅ API Response received');
+    return data;
   }
 
+  // Non-admin token path
   console.log(`🔄 API Request: ${options.method || 'GET'} ${url}`);
   
   const response = await fetch(url, {
@@ -80,26 +120,30 @@ async function findRoleByName(roleName: string): Promise<StrapiRole | null> {
   try {
     console.log(`🔍 Looking for role: ${roleName}`);
     
-    const response = await strapiRequest('/users-permissions/roles', { method: 'GET' }, true);
+    // Use your custom roles collection instead of users-permissions
+    const response = await strapiRequest('/roles', { method: 'GET' }, true);
     
     // Handle different response structures
     let roles = [];
     if (response.data) {
       roles = response.data;
-    } else if (response.roles) {
-      roles = response.roles;
     } else if (Array.isArray(response)) {
       roles = response;
     }
     
-    const role = roles.find((r: StrapiRole) => r.name.toLowerCase() === roleName.toLowerCase());
+    const role = roles.find((r: any) => r.name?.toLowerCase() === roleName.toLowerCase());
     
     if (role) {
       console.log(`✅ Found role: ${role.name} (ID: ${role.id})`);
-      return role;
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description || '',
+        type: 'custom'
+      };
     } else {
       console.log(`❌ Role not found: ${roleName}`);
-      console.log('Available roles:', roles.map((r: StrapiRole) => r.name));
+      console.log('Available roles:', roles.map((r: any) => r.name));
       return null;
     }
   } catch (error) {

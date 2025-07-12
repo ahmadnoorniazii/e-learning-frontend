@@ -83,7 +83,12 @@ export default function CoursesPage() {
         page: 1,
         pageSize: 100,
       });
-      setCourses(response.data || []);
+      setCourses(
+        (response.data || []).map((course: any) => ({
+          ...course,
+          id: course.id.toString(),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching courses:', error);
       setError('Failed to load courses. Please check your Strapi backend connection.');

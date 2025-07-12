@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, SlidersHorizontal, Grid, List, Star, Clock, Users, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,21 +10,66 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CourseCard } from '@/components/ui/course-card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Course } from '@/lib/types';
-import { mockCourses, getMockCoursesByCategory } from '@/lib/mock-data';
+import { Course as ApiCourse, CourseCategory } from '@/lib/api-client';
+import courseService from '@/lib/course-service';
+import categoriesService from '@/lib/categories-service';
 import Link from 'next/link';
+import Image from 'next/image';
 
-const categories = [
-  'All Categories',
-  'Web Development',
-  'Data Science', 
-  'Design',
-  'Marketing',
-  'Business',
-  'Photography'
-];
+// Transform API course to match CourseCard expectations
+const transformCourse = (apiCourse: ApiCourse): any => {
+  const baseURL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+  
+  const thumbnailUrl = apiCourse.thumbnail?.url ? `${baseURL}${apiCourse.thumbnail.url}` : null;
+  const avatarUrl = apiCourse.avatar?.url ? `${baseURL}${apiCourse.avatar.url}` : null;
+  
+  // Debug logging
+  console.log('Transforming course:', {
+    id: apiCourse.id,
+    documentId: apiCourse.documentId,
+    title: apiCourse.title,
+    thumbnailUrl,
+    avatarUrl,
+    rawThumbnail: apiCourse.thumbnail,
+    rawAvatar: apiCourse.avatar
+  });
+  
+  return {
+    id: apiCourse.documentId || apiCourse.id.toString(), // Use documentId for Strapi v5
+    title: apiCourse.title,
+    description: apiCourse.description,
+    slug: apiCourse.slug,
+    thumbnail: thumbnailUrl,
+    avatar: avatarUrl,
+    price: apiCourse.price,
+    rating: apiCourse.rating || 0,
+    totalRatings: apiCourse.totalRatings || 0,
+    enrollmentCount: apiCourse.enrollmentCount || 0,
+    studentsCount: apiCourse.enrollmentCount || 0,
+    reviewsCount: apiCourse.totalRatings || 0,
+    duration: apiCourse.duration || 0,
+    level: apiCourse.difficultyLevel || 'beginner',
+    // Handle both nested and direct category structure
+    category: (apiCourse as any).category?.name || apiCourse.category?.data?.attributes?.name || 'Uncategorized',
+    // Handle both nested and direct tags structure
+    tags: (apiCourse as any).tags?.map?.((tag: any) => tag.name) || 
+          apiCourse.tags?.data?.map?.((tag: any) => tag.attributes?.name || tag.name) || [],
+    instructor: {
+      name: (apiCourse as any).instructor?.username || 
+            apiCourse.instructor?.data?.attributes?.username || 'Unknown Instructor',
+      avatar: null
+    },
+    lessonsCount: (apiCourse as any).lessons?.length || 
+                  apiCourse.lessons?.data?.length || 0,
+    createdAt: apiCourse.createdAt,
+    isFree: apiCourse.isFree || false,
+    isPremium: apiCourse.isPremium || false,
+    featured: apiCourse.featured || false,
+    isActive: apiCourse.isActive !== false // Default to true if not specified
+  };
+};
 
-const levels = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
+const levels = ['All Levels', 'beginner', 'intermediate', 'advanced'];
 const sortOptions = [
   { value: 'popular', label: 'Most Popular' },
   { value: 'newest', label: 'Newest' },
@@ -34,7 +79,9 @@ const sortOptions = [
 ];
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [allCourses, setAllCourses] = useState<any[]>([]);
+  const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,39 +89,136 @@ export default function CoursesPage() {
   const [selectedLevel, setSelectedLevel] = useState('All Levels');
   const [sortBy, setSortBy] = useState('popular');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  useEffect(() => {
-    fetchCourses();
-  }, [selectedCategory, selectedLevel, sortBy]);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const fetchCourses = async () => {
     try {
-      setLoading(true);
-      setError(null);
+      // Fetch courses with pagination (get more if needed)
+      const response = await courseService.getPublicCourses({
+        page: 1,
+        pageSize: 100 // Get more courses for filtering
+      });
 
-      // Use mock data for now
-      let coursesToShow = getMockCoursesByCategory(selectedCategory);
-      
-      // Apply level filter
-      if (selectedLevel !== 'All Levels') {
-        coursesToShow = coursesToShow.filter(course => 
-          course.level.toLowerCase() === selectedLevel.toLowerCase()
-        );
+      if (response && response.data) {
+        const transformedCourses = response.data.map(transformCourse);
+        setAllCourses(transformedCourses);
+        setTotalCourses(response.meta?.pagination?.total || transformedCourses.length);
+      } else {
+        setAllCourses([]);
+        setTotalCourses(0);
       }
-      
-      setCourses(coursesToShow);
     } catch (err) {
       console.error('Error fetching courses:', err);
       setError('Failed to load courses. Please check your connection.');
-    } finally {
-      setLoading(false);
+      setAllCourses([]);
+      setTotalCourses(0);
     }
   };
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+  const applyFiltersAndSort = useCallback(() => {
+    let filteredCourses = [...allCourses];
+
+    // Apply category filter
+    if (selectedCategory !== 'All Categories') {
+      filteredCourses = filteredCourses.filter((course: any) => 
+        course.category === selectedCategory
+      );
+    }
+
+    // Apply level filter
+    if (selectedLevel !== 'All Levels') {
+      filteredCourses = filteredCourses.filter((course: any) => 
+        course.level === selectedLevel
+      );
+    }
+
+    setCourses(filteredCourses);
+  }, [allCourses, selectedCategory, selectedLevel]);
+
+  const handleSearch = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      applyFiltersAndSort();
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      const response = await courseService.searchCourses(query);
+      
+      if (response && response.data) {
+        const transformedCourses = response.data.map(transformCourse);
+        
+        // Apply filters to search results
+        let filteredResults = transformedCourses;
+        
+        if (selectedCategory !== 'All Categories') {
+          filteredResults = filteredResults.filter((course: any) => 
+            course.category === selectedCategory
+          );
+        }
+
+        if (selectedLevel !== 'All Levels') {
+          filteredResults = filteredResults.filter((course: any) => 
+            course.level === selectedLevel
+          );
+        }
+
+        setCourses(filteredResults);
+      } else {
+        setCourses([]);
+      }
+    } catch (err) {
+      console.error('Error searching courses:', err);
+      // Fallback to local search
+      applyFiltersAndSort();
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [selectedCategory, selectedLevel, applyFiltersAndSort]);
+
+  // Debounce search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleSearch(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, handleSearch]);
+
+  useEffect(() => {
+    const initializeData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Load categories
+        const categoriesData = await categoriesService.getCategories();
+        setCategories(categoriesData);
+
+        // Load all courses
+        await fetchCourses();
+      } catch (err) {
+        console.error('Error initializing data:', err);
+        setError('Failed to load data. Please check your connection.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [applyFiltersAndSort]);
+
+  // For local filtering when search is empty
+  const filteredCourses = searchQuery.trim() ? courses : courses.filter(course => {
+    const matchesSearch = !searchQuery.trim() || 
+                         (course.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (course.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (course.tags || []).some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesSearch;
   });
 
@@ -83,14 +227,14 @@ export default function CoursesPage() {
       case 'newest':
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       case 'price-low':
-        return a.price - b.price;
+        return (a.price ?? 0) - (b.price ?? 0);
       case 'price-high':
-        return b.price - a.price;
+        return (b.price ?? 0) - (a.price ?? 0);
       case 'rating':
-        return b.rating - a.rating;
+        return (b.rating ?? 0) - (a.rating ?? 0);
       case 'popular':
       default:
-        return b.studentsCount - a.studentsCount;
+        return (b.studentsCount ?? 0) - (a.studentsCount ?? 0);
     }
   });
 
@@ -124,7 +268,11 @@ export default function CoursesPage() {
           All Courses
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Discover {mockCourses.length} courses from expert instructors across all categories
+          {totalCourses > 0 ? (
+            <>Discover {totalCourses} courses from expert instructors across all categories</>
+          ) : (
+            <>Explore our comprehensive course catalog</>
+          )}
         </p>
       </div>
 
@@ -146,7 +294,13 @@ export default function CoursesPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-14 text-lg border-2 border-gray-200 focus:border-blue-500 rounded-xl"
+                disabled={searchLoading}
               />
+              {searchLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                </div>
+              )}
             </div>
 
             {/* Category Filter */}
@@ -155,9 +309,9 @@ export default function CoursesPage() {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {['All Categories', ...categories.map(cat => cat.name)].map((categoryName) => (
+                  <SelectItem key={categoryName} value={categoryName}>
+                    {categoryName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -171,7 +325,7 @@ export default function CoursesPage() {
               <SelectContent>
                 {levels.map((level) => (
                   <SelectItem key={level} value={level}>
-                    {level}
+                    {level === 'All Levels' ? level : level.charAt(0).toUpperCase() + level.slice(1)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -198,7 +352,7 @@ export default function CoursesPage() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <p className="text-lg text-gray-600">
-            Showing <span className="font-semibold text-blue-600">{sortedCourses.length}</span> of <span className="font-semibold">{mockCourses.length}</span> courses
+            Showing <span className="font-semibold text-blue-600">{sortedCourses.length}</span> of <span className="font-semibold">{totalCourses}</span> courses
           </p>
           {selectedCategory !== 'All Categories' && (
             <Badge variant="secondary" className="px-3 py-1 bg-blue-100 text-blue-800">
@@ -264,9 +418,11 @@ export default function CoursesPage() {
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-6">
                       <div className="md:w-80 flex-shrink-0">
-                        <img
-                          src={course.thumbnail}
-                          alt={course.title}
+                        <Image
+                          src={course.thumbnail ?? '/placeholder-course.jpg'}
+                          alt={course.title ?? 'Course'}
+                          width={320}
+                          height={192}
                           className="w-full h-48 md:h-full object-cover rounded-xl"
                         />
                       </div>
@@ -275,31 +431,31 @@ export default function CoursesPage() {
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
                               <Link href={`/courses/${course.id}`}>
-                                {course.title}
+                                {course.title ?? 'Untitled Course'}
                               </Link>
                             </h3>
                             <div className="text-right">
-                              <div className="text-2xl font-bold text-blue-600">${course.price}</div>
+                              <div className="text-2xl font-bold text-blue-600">${course.price ?? 0}</div>
                             </div>
                           </div>
-                          <p className="text-gray-600 line-clamp-2 mb-4">{course.description}</p>
+                          <p className="text-gray-600 line-clamp-2 mb-4">{course.description ?? 'No description available'}</p>
                         </div>
                         
                         <div className="flex items-center space-x-4 mb-4">
                           <div className="flex items-center space-x-2">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={course.instructor.avatar} alt={course.instructor.name} />
+                              <AvatarImage src={course.instructor?.avatar} alt={course.instructor?.name ?? 'Instructor'} />
                               <AvatarFallback>
-                                {course.instructor.name.split(' ').map(n => n[0]).join('')}
+                                {(course.instructor?.name ?? 'IN').split(' ').map((n: string) => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium text-gray-700">{course.instructor.name}</span>
+                            <span className="text-sm font-medium text-gray-700">{course.instructor?.name ?? 'Instructor'}</span>
                           </div>
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {course.category}
+                            {course.category ?? 'Uncategorized'}
                           </Badge>
                           <Badge variant="secondary" className="bg-purple-50 text-purple-700">
-                            {course.level}
+                            {course.level ?? 'All Levels'}
                           </Badge>
                         </div>
                         
@@ -307,20 +463,20 @@ export default function CoursesPage() {
                           <div className="flex items-center space-x-6 text-sm text-gray-600 flex-1">
                             <div className="flex items-center space-x-1">
                               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              <span className="font-medium">{course.rating}</span>
-                              <span>({course.reviewsCount})</span>
+                              <span className="font-medium">{course.rating ?? 0}</span>
+                              <span>({course.reviewsCount ?? 0})</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Users className="h-4 w-4" />
-                              <span>{course.studentsCount.toLocaleString()}</span>
+                              <span>{(course.studentsCount ?? 0).toLocaleString()}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Clock className="h-4 w-4" />
-                              <span>{formatDuration(course.duration)}</span>
+                              <span>{formatDuration(course.duration ?? 0)}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <BookOpen className="h-4 w-4" />
-                              <span>{course.lessonsCount} lessons</span>
+                              <span>{course.lessonsCount ?? 0} lessons</span>
                             </div>
                           </div>
                           <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl ml-4 flex-shrink-0">

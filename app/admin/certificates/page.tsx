@@ -66,7 +66,12 @@ export default function CertificatesPage() {
         page: 1,
         pageSize: 100,
       });
-      setCertificates(response.data || []);
+      setCertificates(
+        (response.data || []).map((cert: any) => ({
+          ...cert,
+          id: cert.id.toString(),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching certificates:', error);
       setError('Failed to load certificates. Please check your Strapi backend connection.');

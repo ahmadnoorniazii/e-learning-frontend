@@ -29,7 +29,13 @@ export const mockUsers: User[] = [
 ];
 
 // Import course data from JSON file
-export const mockCourses: Course[] = coursesData.courses;
+export const mockCourses: Course[] = coursesData.courses.map(course => ({
+  ...course,
+  instructor: {
+    ...course.instructor,
+    role: course.instructor.role as 'student' | 'instructor' | 'admin'
+  }
+}));
 
 export const getMockCoursesByCategory = (category: string) => {
   if (category === 'All Categories') {

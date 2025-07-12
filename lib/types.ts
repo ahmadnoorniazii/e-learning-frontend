@@ -11,18 +11,39 @@ export interface Course {
   id: string;
   title: string;
   description: string;
+  slug?: string;
+  shortDescription?: string;
   instructor: User;
-  thumbnail: string;
+  thumbnail?: string;
+  avatar?: string; // Course icon/avatar (256x256px)
+  introVideo?: string; // Course introduction video file URL
+  promoVideo?: string; // Promotional video file URL
+  courseMedia?: string[]; // Additional course materials URLs
+  introVideoUrl?: string; // External intro video URL (YouTube, Vimeo)
+  promoVideoUrl?: string; // External promo video URL
   price: number;
-  category: string;
-  level: 'beginner' | 'intermediate' | 'advanced';
+  isFree?: boolean;
+  isPremium?: boolean;
+  difficultyLevel?: 'beginner' | 'intermediate' | 'advanced';
   duration: number; // in minutes
-  lessonsCount: number;
-  studentsCount: number;
+  objectives?: string;
+  prerequisites?: string;
   rating: number;
-  reviewsCount: number;
+  totalRatings?: number;
+  enrollmentCount?: number;
+  completionRate?: number;
+  isActive?: boolean;
+  featured?: boolean;
+  language?: string;
+  level?: string;
+  requirements?: string;
+  category: string;
+  lessonsCount?: number;
+  studentsCount?: number;
+  reviewsCount?: number;
   tags: string[];
   createdAt: string;
+  updatedAt?: string;
   lessons: Lesson[];
   isEnrolled?: boolean;
   progress?: number;
@@ -31,12 +52,24 @@ export interface Course {
 export interface Lesson {
   id: string;
   title: string;
+  slug?: string; // UID field for lessons
   description: string;
-  videoUrl?: string;
+  content?: string;
+  videoUrl?: string; // External video URL
+  videoFile?: string; // Uploaded video file URL
   duration: number; // in minutes
   order: number;
   isCompleted?: boolean;
-  materials?: Material[];
+  materials?: Material[]; // Multiple lesson attachments and resources
+  transcript?: string;
+  resources?: Material[];
+  quiz?: any;
+  assignment?: any;
+  lessonType?: 'video' | 'reading' | 'assignment' | 'quiz';
+  isPreview?: boolean;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Material {
@@ -79,7 +112,7 @@ export interface Enrollment {
   id: string;
   userId: string;
   courseId: string;
-  enrolledAt: string;
+  enrollmentDate: string;
   status: 'active' | 'completed' | 'cancelled';
 }
 

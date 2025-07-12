@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+"pm2:start": "npm run build && pm2 start ecosystem.config.js",
+  "pm2:restart": "npm run build && pm2 restart ecosystem.config.js",
+  "pm2:stop": "pm2 stop ecosystem.config.js",
+  "pm2:delete": "pm2 delete ecosystem.config.js",
+  "pm2:logs": "pm2 logs nextjs-app"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -38,6 +43,7 @@
     "@radix-ui/react-toggle": "^1.1.0",
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
+    "@strapi/utils": "^5.18.0",
     "@types/node": "20.6.2",
     "@types/react": "18.2.22",
     "@types/react-dom": "18.2.7",
@@ -54,6 +60,7 @@
     "next": "13.5.1",
     "next-themes": "^0.3.0",
     "postcss": "8.4.30",
+    "qs": "^6.14.0",
     "react": "18.2.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "18.2.0",
@@ -67,5 +74,10 @@
     "typescript": "5.2.2",
     "vaul": "^0.9.9",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/koa": "^2.15.0"
   }
 }

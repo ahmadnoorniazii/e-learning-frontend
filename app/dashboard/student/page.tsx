@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Progress as ProgressBar } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatsCard } from '@/components/ui/stats-card';
@@ -29,7 +29,7 @@ import { Course, Certificate } from '@/lib/types';
 
 interface EnrolledCourse extends Course {
   progress: number;
-  enrolledAt: string;
+  enrollmentDate: string;
 }
 
 export default function StudentDashboard() {
@@ -119,7 +119,7 @@ export default function StudentDashboard() {
                       videoUrl: lesson.attributes.videoUrl,
                     })) || [],
                   progress: progressData?.attributes.percentage || 0,
-                  enrolledAt: enrollment.attributes.enrolledAt,
+                  enrollmentDate: enrollment.attributes.enrollmentDate || enrollment.attributes.enrolledAt || new Date().toISOString(),
                 };
 
                 enrolledCoursesData.push(course);
@@ -270,7 +270,7 @@ export default function StudentDashboard() {
                                     <span>Progress</span>
                                     <span>{course.progress}%</span>
                                   </div>
-                                  <Progress value={course.progress} className="w-full" />
+                                  <ProgressBar value={course.progress} className="w-full" />
                                 </div>
                                 <div className="flex items-center space-x-4 mt-3 text-sm text-muted-foreground">
                                   <span className="flex items-center">
@@ -411,7 +411,7 @@ export default function StudentDashboard() {
                       <p className="text-sm font-medium">Enrolled in course</p>
                       <p className="text-xs text-muted-foreground">{course.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(course.enrolledAt).toLocaleDateString()}
+                        {new Date(course.enrollmentDate).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

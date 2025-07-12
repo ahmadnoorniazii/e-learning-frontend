@@ -24,6 +24,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { strapiAPI } from '@/lib/strapi';
+import { useToast } from '@/hooks/use-toast';
 
 interface Review {
   id: string;
@@ -56,10 +57,11 @@ export default function ReviewsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRating, setSelectedRating] = useState('all');
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, []); // Dependency array is empty to mimic componentDidMount
 
   const fetchReviews = async () => {
     try {
@@ -69,12 +71,97 @@ export default function ReviewsPage() {
         page: 1,
         pageSize: 100,
       });
-      setReviews(response.data || []);
+      setReviews(
+        (response.data || []).map((review: any) => ({
+          ...review,
+          id: review.id.toString(),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching reviews:', error);
       setError('Failed to load reviews. Please check your Strapi backend connection.');
+      toast({
+        title: "Failed to load reviews",
+        description: error instanceof Error ? error.message : "Please check your Strapi backend connection",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveReview = async (reviewId: string) => {
+    try {
+      await strapiAPI.updateReview(reviewId, {
+        reviewStatus: 'approved'
+      });
+      
+      toast({
+        title: "Review approved",
+        description: "The review has been published successfully",
+      });
+      
+      // Update local state
+      setReviews(reviews.map(review => 
+        review.id === reviewId 
+          ? {...review, attributes: {...review.attributes, reviewStatus: 'approved'}} 
+          : review
+      ));
+    } catch (error) {
+      console.error('Error approving review:', error);
+      toast({
+        title: "Failed to approve review",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectReview = async (reviewId: string) => {
+    try {
+      await strapiAPI.updateReview(reviewId, {
+        reviewStatus: 'rejected'
+      });
+      
+      toast({
+        title: "Review rejected",
+        description: "The review has been rejected and won't be published",
+      });
+      
+      // Update local state
+      setReviews(reviews.map(review => 
+        review.id === reviewId 
+          ? {...review, attributes: {...review.attributes, reviewStatus: 'rejected'}} 
+          : review
+      ));
+    } catch (error) {
+      console.error('Error rejecting review:', error);
+      toast({
+        title: "Failed to reject review",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    try {
+      await strapiAPI.deleteReview(reviewId);
+      
+      toast({
+        title: "Review deleted",
+        description: "The review has been permanently removed",
+      });
+      
+      // Update local state
+      setReviews(reviews.filter(review => review.id !== reviewId));
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast({
+        title: "Failed to delete review",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
@@ -218,13 +305,16 @@ export default function ReviewsPage() {
                           <Eye className="h-4 w-4 mr-2" />
                           View Full Review
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleApproveReview(review.id)}>
                           Approve
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleRejectReview(review.id)}>
                           Reject
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => handleDeleteReview(review.id)}
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>

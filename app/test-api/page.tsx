@@ -8,7 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { strapiAPI } from '@/lib/strapi';
+import { apiClient } from '@/lib/api-client';
+import { courseService } from '@/lib/course-service';
+import { userProfileService } from '@/lib/user-profile-service';
+import { categoriesService } from '@/lib/categories-service';
 import { useAuth } from '@/hooks/use-auth';
 
 interface TestResult {
@@ -105,10 +108,13 @@ export default function TestAPIPage() {
     clearResults();
 
     // Test public course access
-    await runTest('Public: Get Courses', () => strapiAPI.getCourses({ page: 1, pageSize: 5 }));
+    await runTest('Public: Get Courses', () => apiClient.getCourses({ page: 1, pageSize: 5 }));
     
-    // Test public reviews access
-    await runTest('Public: Get Reviews', () => strapiAPI.getReviews({ page: 1, pageSize: 5 }));
+    // Test categories
+    await runTest('Public: Get Categories', () => categoriesService.getCategories());
+    
+    // Test tags
+    await runTest('Public: Get Tags', () => categoriesService.getTags());
 
     setTesting(false);
   };
@@ -127,26 +133,26 @@ export default function TestAPIPage() {
     clearResults();
 
     // Test authenticated course access
-    await runTest('Auth: Get Courses', () => strapiAPI.getCourses({ page: 1, pageSize: 5 }));
+    await runTest('Auth: Get Courses', () => apiClient.getCourses({ page: 1, pageSize: 5 }));
     
     // Test user's enrollments
     await runTest('Auth: Get My Enrollments', () => 
-      strapiAPI.getEnrollments({ userId: user.id, page: 1, pageSize: 10 })
+      courseService.getMyEnrollments({ page: 1, pageSize: 10 })
     );
     
     // Test user's progress
     await runTest('Auth: Get My Progress', () => 
-      strapiAPI.getProgress(user.id)
+      courseService.getLessonProgress({ page: 1, pageSize: 10 })
     );
     
     // Test user's certificates
     await runTest('Auth: Get My Certificates', () => 
-      strapiAPI.getCertificates({ userId: user.id })
+      courseService.getMyCertificates()
     );
     
-    // Test user's orders
-    await runTest('Auth: Get My Orders', () => 
-      strapiAPI.getOrders({ filters: { user: user.id } })
+    // Test user profile
+    await runTest('Auth: Get My Profile', () => 
+      userProfileService.getMyProfile()
     );
 
     setTesting(false);
@@ -176,40 +182,132 @@ export default function TestAPIPage() {
 
     // Test instructor course access
     await runTest('Instructor: Get My Courses', () => 
-      strapiAPI.getCourses({ filters: { instructor: user.id } })
+      apiClient.getCourses({ filters: { instructor: Number(user.id) } })
     );
     
     // Test course creation
     await runTest('Instructor: Create Test Course', () => 
-      strapiAPI.createCourse({
+      courseService.createCourse({
         title: 'Test Course API',
         description: 'This is a test course created via API',
         price: 99.99,
-        category: 'Web Development',
-        level: 'beginner',
-        publicationStatus: 'draft',
+        difficultyLevel: 'beginner',
         duration: 120,
-        tags: ['test', 'api'],
-        instructor: user.id,
-        studentsCount: 0,
-        rating: 0,
-        reviewsCount: 0,
-        lessons: [
-          {
-            title: 'Test Lesson 1',
-            description: 'First test lesson',
-            duration: 30,
-            order: 1
-          },
-          {
-            title: 'Test Lesson 2',
-            description: 'Second test lesson',
-            duration: 45,
-            order: 2
-          }
-        ]
+        isFree: false,
+        isPremium: false,
       })
     );
+
+    // Test media upload functionality
+    await runTest('Instructor: Test Media Upload', async () => {
+      // Create a simple test image file
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#4F46E5';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Test Avatar', 128, 128);
+      }
+      
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            reject(new Error('Failed to create test image'));
+            return;
+          }
+          
+          try {
+            const testFile = new File([blob], 'test-avatar.png', { type: 'image/png' });
+            const uploadResult = await courseService.uploadCourseMedia(
+              testFile, 
+              'Test course avatar', 
+              'Generated test avatar for API testing'
+            );
+            resolve(uploadResult);
+          } catch (error) {
+            reject(error);
+          }
+        }, 'image/png');
+      });
+    });
+
+    // Test course creation with media
+    await runTest('Instructor: Create Course with Media', async () => {
+      // Create test thumbnail
+      const thumbnailCanvas = document.createElement('canvas');
+      thumbnailCanvas.width = 1200;
+      thumbnailCanvas.height = 630;
+      const thumbnailCtx = thumbnailCanvas.getContext('2d');
+      if (thumbnailCtx) {
+        thumbnailCtx.fillStyle = '#059669';
+        thumbnailCtx.fillRect(0, 0, 1200, 630);
+        thumbnailCtx.fillStyle = '#FFFFFF';
+        thumbnailCtx.font = '48px Arial';
+        thumbnailCtx.textAlign = 'center';
+        thumbnailCtx.fillText('Course Thumbnail', 600, 315);
+      }
+
+      // Create test avatar
+      const avatarCanvas = document.createElement('canvas');
+      avatarCanvas.width = 256;
+      avatarCanvas.height = 256;
+      const avatarCtx = avatarCanvas.getContext('2d');
+      if (avatarCtx) {
+        avatarCtx.fillStyle = '#7C3AED';
+        avatarCtx.fillRect(0, 0, 256, 256);
+        avatarCtx.fillStyle = '#FFFFFF';
+        avatarCtx.font = '24px Arial';
+        avatarCtx.textAlign = 'center';
+        avatarCtx.fillText('Avatar', 128, 128);
+      }
+
+      return new Promise((resolve, reject) => {
+        let thumbnailBlob: Blob | null = null;
+        let avatarBlob: Blob | null = null;
+        let completed = 0;
+
+        const checkComplete = async () => {
+          if (++completed === 2 && thumbnailBlob && avatarBlob) {
+            try {
+              const thumbnailFile = new File([thumbnailBlob], 'test-thumbnail.png', { type: 'image/png' });
+              const avatarFile = new File([avatarBlob], 'test-avatar.png', { type: 'image/png' });
+              
+              const result = await courseService.createCourseWithMedia({
+                title: 'Course with Media ' + Date.now(),
+                description: 'This course was created with both thumbnail and avatar images',
+                shortDescription: 'Complete media test course',
+                price: 149.99,
+                difficultyLevel: 'intermediate',
+                duration: 180,
+                isFree: false,
+                isPremium: true,
+                thumbnailFile,
+                avatarFile,
+              });
+              
+              resolve(result);
+            } catch (error) {
+              reject(error);
+            }
+          }
+        };
+
+        thumbnailCanvas.toBlob((blob) => {
+          thumbnailBlob = blob;
+          checkComplete();
+        }, 'image/png');
+
+        avatarCanvas.toBlob((blob) => {
+          avatarBlob = blob;
+          checkComplete();
+        }, 'image/png');
+      });
+    });
 
     setTesting(false);
   };
@@ -238,30 +336,260 @@ export default function TestAPIPage() {
 
     // Test admin user access
     await runTest('Admin: Get All Users', () => 
-      strapiAPI.getUsers({ page: 1, pageSize: 10 })
+      userProfileService.getUserProfiles({ pagination: { page: 1, pageSize: 10 } })
     );
     
     // Test admin course access
     await runTest('Admin: Get All Courses', () => 
-      strapiAPI.getCourses({ page: 1, pageSize: 10 })
-    );
-    
-    // Test admin order access
-    await runTest('Admin: Get All Orders', () => 
-      strapiAPI.getOrders({ page: 1, pageSize: 10 })
+      apiClient.getCourses({ page: 1, pageSize: 10 })
     );
     
     // Test admin review access
     await runTest('Admin: Get All Reviews', () => 
-      strapiAPI.getReviews({ page: 1, pageSize: 10 })
+      apiClient.getCourseReviews({ page: 1, pageSize: 10 })
     );
     
     // Test admin certificate access
     await runTest('Admin: Get All Certificates', () => 
-      strapiAPI.getCertificates({ page: 1, pageSize: 10 })
+      apiClient.getCertificates()
     );
 
     setTesting(false);
+  };
+
+  const testMediaUpload = async () => {
+    if (!isAuthenticated || !user) {
+      addResult({ 
+        name: 'Authentication Check', 
+        status: 'error', 
+        message: 'User not authenticated' 
+      });
+      return;
+    }
+
+    if (user.role !== 'instructor') {
+      addResult({ 
+        name: 'Role Check', 
+        status: 'error', 
+        message: 'User is not an instructor' 
+      });
+      return;
+    }
+
+    setTesting(true);
+    clearResults();
+
+    // Test basic media upload
+    await runTest('Media: Upload Test Image', async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#3B82F6';
+        ctx.fillRect(0, 0, 400, 300);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Test Upload', 200, 150);
+      }
+      
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            reject(new Error('Failed to create test image'));
+            return;
+          }
+          
+          try {
+            const testFile = new File([blob], 'test-upload.png', { type: 'image/png' });
+            const uploadResult = await courseService.uploadCourseMedia(
+              testFile, 
+              'Test upload image', 
+              'Test image for media upload functionality'
+            );
+            resolve(uploadResult);
+          } catch (error) {
+            reject(error);
+          }
+        }, 'image/png');
+      });
+    });
+
+    // Test avatar and thumbnail workflow
+    await runTest('Media: Avatar & Thumbnail Workflow', async () => {
+      // This test validates the complete workflow for course media
+      const results = {
+        avatar: null as any,
+        thumbnail: null as any,
+      };
+
+      // Create avatar
+      const avatarCanvas = document.createElement('canvas');
+      avatarCanvas.width = 256;
+      avatarCanvas.height = 256;
+      const avatarCtx = avatarCanvas.getContext('2d');
+      if (avatarCtx) {
+        avatarCtx.fillStyle = '#EF4444';
+        avatarCtx.fillRect(0, 0, 256, 256);
+        avatarCtx.fillStyle = '#FFFFFF';
+        avatarCtx.font = '20px Arial';
+        avatarCtx.textAlign = 'center';
+        avatarCtx.fillText('Course', 128, 120);
+        avatarCtx.fillText('Avatar', 128, 145);
+      }
+
+      // Create thumbnail
+      const thumbnailCanvas = document.createElement('canvas');
+      thumbnailCanvas.width = 1200;
+      thumbnailCanvas.height = 630;
+      const thumbnailCtx = thumbnailCanvas.getContext('2d');
+      if (thumbnailCtx) {
+        thumbnailCtx.fillStyle = '#10B981';
+        thumbnailCtx.fillRect(0, 0, 1200, 630);
+        thumbnailCtx.fillStyle = '#FFFFFF';
+        thumbnailCtx.font = '48px Arial';
+        thumbnailCtx.textAlign = 'center';
+        thumbnailCtx.fillText('Course Thumbnail', 600, 300);
+        thumbnailCtx.fillText('1200x630', 600, 360);
+      }
+
+      return new Promise((resolve, reject) => {
+        let completed = 0;
+        const totalTasks = 2;
+
+        const checkComplete = () => {
+          if (++completed === totalTasks) {
+            resolve({
+              avatar: results.avatar,
+              thumbnail: results.thumbnail,
+              message: 'Both avatar and thumbnail uploaded successfully'
+            });
+          }
+        };
+
+        // Upload avatar
+        avatarCanvas.toBlob(async (blob) => {
+          if (blob) {
+            try {
+              const avatarFile = new File([blob], 'test-avatar.png', { type: 'image/png' });
+              results.avatar = await courseService.uploadCourseMedia(
+                avatarFile, 
+                'Test course avatar', 
+                'Square course icon (256x256)'
+              );
+              checkComplete();
+            } catch (error) {
+              reject(error);
+            }
+          }
+        }, 'image/png');
+
+        // Upload thumbnail
+        thumbnailCanvas.toBlob(async (blob) => {
+          if (blob) {
+            try {
+              const thumbnailFile = new File([blob], 'test-thumbnail.png', { type: 'image/png' });
+              results.thumbnail = await courseService.uploadCourseMedia(
+                thumbnailFile, 
+                'Test course thumbnail', 
+                'Large course cover image (1200x630)'
+              );
+              checkComplete();
+            } catch (error) {
+              reject(error);
+            }
+          }
+        }, 'image/png');
+      });
+    });
+
+    setTesting(false);
+  };
+
+  const testUnauthorizedAccess = async () => {
+    setTesting(true);
+    clearResults();
+
+    addResult({ 
+      name: 'Test 401 Auto-Logout', 
+      status: 'pending', 
+      message: 'Testing automatic logout on 401 error...' 
+    });
+
+    try {
+      // Make a direct API call with an invalid token to simulate 401
+      const invalidToken = 'invalid-test-token-' + Date.now();
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/users/me`, {
+        headers: {
+          'Authorization': `Bearer ${invalidToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 401) {
+        addResult({ 
+          name: 'Test 401 Auto-Logout', 
+          status: 'success', 
+          message: '401 response received. Note: In a real scenario, this would trigger auto-logout and redirect to login page.' 
+        });
+      } else {
+        addResult({ 
+          name: 'Test 401 Auto-Logout', 
+          status: 'error', 
+          message: `Expected 401 but got ${response.status}` 
+        });
+      }
+      
+    } catch (error: any) {
+      addResult({ 
+        name: 'Test 401 Auto-Logout', 
+        status: 'error', 
+        message: `Network error: ${error.message}` 
+      });
+    }
+
+    setTesting(false);
+  };
+
+  const testImageLoading = () => {
+    setTesting(true);
+    clearResults();
+
+    addResult({ 
+      name: 'Test Image Loading', 
+      status: 'pending', 
+      message: 'Testing Strapi image loading...' 
+    });
+
+    // Test image URLs from the API response
+    const testImages = [
+      'http://localhost:1337/uploads/medium_course_1_thumbnail_coffee_art_jpg_4323725b87.bin',
+      'http://localhost:1337/uploads/small_course_1_thumbnail_coffee_art_jpg_4323725b87.bin',
+      'http://localhost:1337/uploads/course_1_thumbnail_coffee_art_jpg_4323725b87.bin'
+    ];
+
+    testImages.forEach((imageUrl, index) => {
+      const img = new Image();
+      img.onload = () => {
+        addResult({ 
+          name: `Image ${index + 1} Load Test`, 
+          status: 'success', 
+          message: `✅ Image loaded successfully: ${imageUrl.split('/').pop()}` 
+        });
+      };
+      img.onerror = () => {
+        addResult({ 
+          name: `Image ${index + 1} Load Test`, 
+          status: 'error', 
+          message: `❌ Failed to load: ${imageUrl.split('/').pop()}` 
+        });
+      };
+      img.src = imageUrl;
+    });
+
+    setTimeout(() => setTesting(false), 3000);
   };
 
   return (
@@ -346,7 +674,7 @@ export default function TestAPIPage() {
             <CardTitle>Test Categories</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <Button 
                 onClick={testPublicEndpoints}
                 disabled={testing}
@@ -372,11 +700,35 @@ export default function TestAPIPage() {
               </Button>
               
               <Button 
+                onClick={testMediaUpload}
+                disabled={testing || !isAuthenticated || user?.role !== 'instructor'}
+                variant="outline"
+              >
+                Media Upload
+              </Button>
+              
+              <Button 
                 onClick={testAdminEndpoints}
                 disabled={testing || !isAuthenticated || user?.role !== 'admin'}
                 variant="outline"
               >
                 Admin Endpoints
+              </Button>
+              
+              <Button 
+                onClick={testUnauthorizedAccess}
+                disabled={testing || !isAuthenticated}
+                variant="destructive"
+              >
+                Test 401 Auto-Logout
+              </Button>
+              
+              <Button 
+                onClick={testImageLoading}
+                disabled={testing}
+                variant="secondary"
+              >
+                Test Image Loading
               </Button>
             </div>
           </CardContent>

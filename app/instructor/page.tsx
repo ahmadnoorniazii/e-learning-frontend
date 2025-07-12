@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   BookOpen, Users, DollarSign, TrendingUp, Plus, Eye, Edit, 
   BarChart3, Calendar, Star, Award, Clock, Target, CheckCircle
@@ -44,6 +45,99 @@ export default function InstructorDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchInstructorData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!user) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      const coursesResponse = await strapiAPI.getCoursesByInstructor(user.id);
+
+      if (coursesResponse.data) {
+        console.log('courses', courses, coursesResponse.data, "please");   
+        const transformedCourses = coursesResponse.data.map(course => {
+          const attributes = course.attributes;
+          
+          // Handle description field
+          const description = typeof attributes.description === 'string' 
+            ? attributes.description 
+            : Array.isArray(attributes.description)
+              ? (attributes.description as any[]).map((item: any) => 
+                  Array.isArray(item.children) 
+                    ? item.children.map((child: any) => child.text || '').join('') 
+                    : ''
+                ).join('\n')
+              : '';
+          
+          // Calculate revenue based on price and students count
+          const price = attributes.price || 0;
+          const studentsCount = attributes.studentsCount || 0;
+          const revenue = price * studentsCount;
+          
+          return {
+            id: course.id.toString(),
+            title: attributes.title || '',
+            description: description,
+            instructor: {
+              id: attributes.instructor?.data?.id?.toString() || '1',
+              name: attributes.instructor?.data?.attributes?.username || 'Unknown Instructor',
+              email: attributes.instructor?.data?.attributes?.email || '',
+              role: 'instructor',
+              avatar: attributes.instructor?.data?.attributes?.profile?.avatar?.url,
+              createdAt: attributes.createdAt || new Date().toISOString()
+            },
+            thumbnail: attributes.thumbnail?.data?.attributes?.url,
+            price: price,
+            category: attributes.category || '',
+            level: attributes.level || '',
+            duration: attributes.duration || 0,
+            lessonsCount: attributes.lessons?.data?.length || 0,
+            studentsCount: studentsCount,
+            rating: attributes.rating || 0,
+            reviewsCount: attributes.reviewsCount || 0,
+            tags: attributes.tags || [],
+            createdAt: attributes.createdAt || new Date().toISOString(),
+            lessons: attributes.lessons?.data?.map((lesson: any) => ({
+              id: lesson.id.toString(),
+              title: lesson.attributes.title || '',
+              description: lesson.attributes.description || '',
+              duration: lesson.attributes.duration || 0,
+              order: lesson.attributes.order || 0,
+              videoUrl: lesson.attributes.videoUrl
+            })) || [],
+            // InstructorCourse specific fields
+            enrollmentCount: studentsCount,
+            revenue: revenue,
+            lastUpdated: attributes.updatedAt || attributes.createdAt || new Date().toISOString()
+          } as InstructorCourse;
+        });
+        
+        console.log('courses______', coursesResponse.data, "please", transformedCourses); 
+        setCourses(transformedCourses);
+        
+        // Safely calculate stats by handling possible undefined values
+        setStats({
+          totalCourses: transformedCourses.length,
+          totalStudents: transformedCourses.reduce((sum, course) => sum + (course.studentsCount || 0), 0),
+          totalRevenue: transformedCourses.reduce((sum, course) => sum + (course.revenue || 0), 0),
+          averageRating: transformedCourses.length > 0 
+            ? transformedCourses.reduce((sum, course) => sum + (course.rating || 0), 0) / transformedCourses.length 
+            : 0
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching instructor data:', err);
+      setError('Failed to load instructor data. Please check your Strapi backend connection.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, courses]);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth/login');
@@ -59,45 +153,7 @@ export default function InstructorDashboard() {
         fetchInstructorData();
       }
     }
-  }, [isAuthenticated, authLoading, user, router]);
-
-  const fetchInstructorData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const coursesResponse = await strapiAPI.getCoursesByInstructor(user.id);
-
-      if (coursesResponse.data) {
-        console.log('courses',courses,coursesResponse.data,"please");   
-        const transformedCourses = coursesResponse.data.map(course => ({
-  id: course.id,
-  title: course.title,
-  description: course.description.map(paragraph =>
-    paragraph.children.map(child => child.text).join(' ')
-  ).join('\n'),
-  studentsCount: course.studentsCount,
-  revenue: course.price * course.studentsCount,
-  averageRating: course.rating,
-  lastUpdated: course.updatedAt,
-  instructorUsername: course.instructor?.username || null
-}));
- console.log('courses______',coursesResponse.data,"please",transformedCourses); 
-        setCourses(transformedCourses);
-        setStats({
-          totalCourses: transformedCourses.length,
-          totalStudents: transformedCourses.reduce((sum, course) => sum + course.studentsCount, 0),
-          totalRevenue: transformedCourses.reduce((sum, course) => sum + course.revenue, 0),
-          averageRating: transformedCourses.reduce((sum, course) => sum + course.averageRating, 0) / transformedCourses.length
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching instructor data:', err);
-      setError('Failed to load instructor data. Please check your Strapi backend connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isAuthenticated, authLoading, user, router, fetchInstructorData]);
 console.log('courses',courses);
 
   const instructorStats = [
@@ -206,11 +262,15 @@ console.log('courses',courses);
                       <Card key={course.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
                         <CardContent className="p-6">
                           <div className="flex items-start space-x-4">
-                            <img
-                              src={course.thumbnail}
-                              alt={course.title}
-                              className="w-20 h-20 rounded-lg object-cover"
-                            />
+                            <div className="w-20 h-20 relative rounded-lg overflow-hidden">
+                              <Image
+                                src={course.thumbnail || '/placeholder-course.jpg'}
+                                alt={course.title}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-semibold text-lg mb-1">{course.title}</h4>
                               <p className="text-sm text-muted-foreground mb-3 line-clamp-2">

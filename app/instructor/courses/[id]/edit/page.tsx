@@ -7,14 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { StrapiCourse } from '@/lib/strapi';
+import { Course } from '@/lib/types';
 
 export default function EditCourse() {
   const { id } = useParams();
   const courseId = Array.isArray(id) ? id[0] : id;
 
   const router = useRouter();
-  const [course, setCourse] = useState<StrapiCourse | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -43,13 +43,47 @@ export default function EditCourse() {
           ? attributes.description.map((item: any) => item.children.map((child: any) => child.text).join('')).join('\n')
           : attributes.description || '';
 
-        setCourse(response.data);
+        // Map StrapiCourse to Course type
+        const mappedCourse: Course = {
+          id: response.data.id.toString(),
+          title: attributes.title || '',
+          description: description,
+          instructor: {
+            id: attributes.instructor?.data?.id?.toString() || '1',
+            name: attributes.instructor?.data?.attributes?.username || 'Unknown Instructor',
+            email: attributes.instructor?.data?.attributes?.email || '',
+            role: 'instructor',
+            avatar: attributes.instructor?.data?.attributes?.profile?.avatar?.url,
+            createdAt: attributes.createdAt || new Date().toISOString()
+          },
+          thumbnail: attributes.thumbnail?.data?.attributes?.url,
+          price: attributes.price || 0,
+          category: attributes.category || '',
+          level: attributes.level || '',
+          duration: attributes.duration || 0,
+          lessonsCount: attributes.lessons?.data?.length || 0,
+          studentsCount: attributes.studentsCount || 0,
+          rating: attributes.rating || 0,
+          reviewsCount: attributes.reviewsCount || 0,
+          tags: attributes.tags || [],
+          createdAt: attributes.createdAt || new Date().toISOString(),
+          lessons: attributes.lessons?.data?.map((lesson: any) => ({
+            id: lesson.id.toString(),
+            title: lesson.attributes.title || '',
+            description: lesson.attributes.description || '',
+            duration: lesson.attributes.duration || 0,
+            order: lesson.attributes.order || 0,
+            videoUrl: lesson.attributes.videoUrl
+          })) || []
+        };
+
+        setCourse(mappedCourse);
         setFormData({
-          title: attributes.title,
+          title: attributes.title || '',
           description,
-          price: attributes.price.toString(),
-          category: attributes.category,
-          level: attributes.level,
+          price: (attributes.price || 0).toString(),
+          category: attributes.category || '',
+          level: attributes.level || '',
         });
       } else {
         setError('Course not found');
@@ -64,6 +98,7 @@ export default function EditCourse() {
 
   useEffect(() => {
     fetchCourse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

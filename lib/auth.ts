@@ -1,4 +1,4 @@
-import { strapiAPI, StrapiUser } from './strapi';
+import { apiClient, User } from './api-client';
 
 export interface AuthUser {
   id: string;
@@ -17,17 +17,30 @@ export interface AuthState {
 class AuthService {
   private currentUser: AuthUser | null = null;
 
+  constructor() {
+    // Listen for automatic logout events from API client
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth-logout', this.handleAutoLogout.bind(this) as EventListener);
+    }
+  }
+
+  private handleAutoLogout(event: Event): void {
+    const customEvent = event as CustomEvent;
+    console.log('🚪 AuthService: Auto logout triggered:', customEvent.detail?.reason);
+    this.currentUser = null;
+    // Note: localStorage is already cleared by the API client
+  }
+
   async login(email: string, password: string): Promise<AuthUser> {
     try {
       console.log('🔐 AuthService: Attempting login for:', email);
-      const response = await strapiAPI.login(email, password);
+      const response = await apiClient.login(email, password);
       
       const user: AuthUser = {
         id: response.user.id.toString(),
         name: this.getUserDisplayName(response.user),
         email: response.user.email,
         role: this.mapStrapiRoleToAppRole(response.user.role?.name || 'authenticated'),
-        avatar: response.user.profile?.avatar?.url,
         username: response.user.username,
       };
 
@@ -36,7 +49,7 @@ class AuthService {
         localStorage.setItem('auth-user', JSON.stringify(user));
       }
       
-      console.log('✅ AuthService: Login successful, user role:',response, user.role);
+      console.log('✅ AuthService: Login successful, user role:', user.role);
       console.log('🔄 AuthService: User object:', user);
       return user;
     } catch (error) {
@@ -52,7 +65,7 @@ class AuthService {
       // Use email as username if name is not provided or is just email
       const username = name && name !== email ? name.replace(/\s+/g, '').toLowerCase() : email.split('@')[0];
       
-      const response = await strapiAPI.register(email, password, username);
+      const response = await apiClient.register(username, email, password);
       
       const user: AuthUser = {
         id: response.user.id.toString(),
@@ -89,7 +102,7 @@ class AuthService {
 
   logout(): void {
     console.log('🚪 AuthService: Logging out user');
-    strapiAPI.logout();
+    apiClient.logout();
     this.currentUser = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth-user');
@@ -118,10 +131,8 @@ class AuthService {
     return this.getCurrentUser() !== null;
   }
 
-  private getUserDisplayName(user: StrapiUser): string {
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName} ${user.profile.lastName}`;
-    }
+  private getUserDisplayName(user: User): string {
+    // For now, use username or email since we don't have profile data in basic user
     return user.username || user.email;
   }
 

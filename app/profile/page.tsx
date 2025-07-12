@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Progress as ProgressBar } from '@/components/ui/progress';
 import { 
   User, Mail, Calendar, MapPin, Globe, Edit, Save, X, 
   BookOpen, Award, Clock, TrendingUp, Camera 
@@ -180,7 +180,7 @@ export default function ProfilePage() {
                           <h4 className="font-medium text-gray-900">{course.title}</h4>
                           <p className="text-sm text-gray-600">by {course.instructor}</p>
                           <div className="mt-2">
-                            <Progress value={course.progress} className="w-full" />
+                            <ProgressBar value={course.progress} className="w-full" />
                             <p className="text-xs text-gray-500 mt-1">{course.progress}% complete</p>
                           </div>
                         </div>
@@ -196,17 +196,17 @@ export default function ProfilePage() {
                   <CardContent className="space-y-4">
                     <div className="p-4 bg-blue-50 rounded-lg">
                       <h4 className="font-medium text-blue-900 mb-2">Complete 3 courses this month</h4>
-                      <Progress value={67} className="w-full" />
+                      <ProgressBar value={67} className="w-full" />
                       <p className="text-sm text-blue-700 mt-1">2 of 3 completed</p>
                     </div>
                     <div className="p-4 bg-green-50 rounded-lg">
                       <h4 className="font-medium text-green-900 mb-2">Earn 5 certificates</h4>
-                      <Progress value={80} className="w-full" />
+                      <ProgressBar value={80} className="w-full" />
                       <p className="text-sm text-green-700 mt-1">4 of 5 earned</p>
                     </div>
                     <div className="p-4 bg-purple-50 rounded-lg">
                       <h4 className="font-medium text-purple-900 mb-2">Study 20 hours per week</h4>
-                      <Progress value={85} className="w-full" />
+                      <ProgressBar value={85} className="w-full" />
                       <p className="text-sm text-purple-700 mt-1">17 of 20 hours</p>
                     </div>
                   </CardContent>
@@ -230,7 +230,7 @@ export default function ProfilePage() {
                             <span>Progress</span>
                             <span>{course.progress}%</span>
                           </div>
-                          <Progress value={course.progress} />
+                          <ProgressBar value={course.progress} />
                         </div>
                         <Button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600">
                           Continue Learning

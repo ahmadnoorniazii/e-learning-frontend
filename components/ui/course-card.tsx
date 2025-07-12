@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Course } from '@/lib/types';
+import { CourseImage } from '@/components/ui/course-image';
+import { useState } from 'react';
 
 interface CourseCardProps {
   course: Course;
@@ -22,12 +24,29 @@ export function CourseCard({ course }: CourseCardProps) {
     <Card className="border-0 shadow-lg hover:shadow-2xl transition-all duration-300 group bg-white overflow-hidden h-full flex flex-col">
       <Link href={`/courses/${course.id}`}>
         <div className="relative overflow-hidden">
-          <img
-            src={course.thumbnail}
+          <CourseImage
+            src={course?.thumbnail}
             alt={course.title}
             className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          
+          {/* Course Avatar - Small icon in bottom left corner */}
+          {course.avatar && (
+            <div className="absolute bottom-3 left-3">
+              <div className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border-2 border-white/50 shadow-lg overflow-hidden">
+                <Image
+                  src={course.avatar}
+                  alt={`${course.title} icon`}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                  unoptimized={course.avatar.includes('.bin')}
+                />
+              </div>
+            </div>
+          )}
+          
           <div className="absolute top-3 right-3">
             <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 shadow-lg">
               {course.category}
@@ -71,7 +90,7 @@ export function CourseCard({ course }: CourseCardProps) {
             </div>
             <div className="flex items-center space-x-1">
               <Users className="h-4 w-4" />
-              <span>{course.studentsCount.toLocaleString()}</span>
+              <span>{course?.studentsCount?.toLocaleString()}</span>
             </div>
           </div>
         </div>

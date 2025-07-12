@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { BookOpen, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,20 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState('');
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Check for session expiration or logout reason
+    const reason = searchParams.get('reason');
+    if (reason === 'session-expired') {
+      setSessionMessage('Your session has expired. Please log in again.');
+    } else if (reason === 'unauthorized') {
+      setSessionMessage('Access denied. Please log in to continue.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +86,13 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {sessionMessage && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{sessionMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -135,7 +154,7 @@ export default function LoginPage() {
 
             <div className="text-center">
               <span className="text-sm text-muted-foreground">
-                Don't have an account?{' '}
+                Don&#39;t have an account?{' '}
                 <Link href="/auth/register" className="text-primary hover:underline">
                   Sign up
                 </Link>

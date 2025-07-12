@@ -26,6 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (currentUser) {
       console.log('🔄 AuthProvider: Restored user:', currentUser.role);
     }
+
+    // Listen for automatic logout events
+    const handleAutoLogout = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('🚪 AuthProvider: Auto logout detected:', customEvent.detail?.reason);
+      setUser(null);
+    };
+
+    window.addEventListener('auth-logout', handleAutoLogout);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('auth-logout', handleAutoLogout);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<AuthUser> => {

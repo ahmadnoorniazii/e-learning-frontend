@@ -3,15 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { strapiAPI } from '@/lib/strapi';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/hooks/use-auth';
+import type { StrapiCourse } from '@/lib/strapi';
 
 export default function MyCoursesSidebar() {
-  const [courses, setCourses] = useState([]);
+  const [courses, setCourses] = useState<StrapiCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -19,7 +22,13 @@ export default function MyCoursesSidebar() {
         setLoading(true);
         setError(null);
 
-        const response = await strapiAPI.getCoursesByInstructor();
+        if (!user || !user.id) {
+          setError('User not authenticated');
+          setLoading(false);
+          return;
+        }
+
+        const response = await strapiAPI.getCoursesByInstructor(user.id);
 
         if (response.data) {
           setCourses(response.data);
@@ -35,7 +44,7 @@ export default function MyCoursesSidebar() {
     };
 
     fetchCourses();
-  }, []);
+  }, [user]);
 
   if (loading) {
     return (
@@ -64,10 +73,14 @@ export default function MyCoursesSidebar() {
                 <div className="flex items-start space-x-4">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-lg mb-1">{course.attributes.title}</h4>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{course.attributes.description}</p>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {typeof course.attributes.description === 'string' 
+                        ? course.attributes.description 
+                        : 'No description available'}
+                    </p>
                     <div className="flex items-center space-x-4 text-sm">
-                      <Badge variant="outline">{course.attributes.category}</Badge>
-                      <Badge variant="secondary">{course.attributes.level}</Badge>
+                      <Badge variant="outline">{course.attributes.category || 'Uncategorized'}</Badge>
+                      <Badge variant="secondary">{course.attributes.level || 'Not specified'}</Badge>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">

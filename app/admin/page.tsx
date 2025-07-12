@@ -68,7 +68,7 @@ export default function AdminDashboard() {
         instructor: course.attributes.instructor?.data?.attributes.username || 'Unknown',
         students: 0, // This would come from enrollments
         revenue: `$${course.attributes.price}`,
-        status: course.attributes.status
+        status: course.attributes.publicationStatus
       })) || [];
 
       setDashboardData({
@@ -192,7 +192,7 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
-            Overview of your platform's performance and activity
+            {`Overview of your platform's performance and activity`}
           </p>
         </div>
         <Button variant="outline" onClick={fetchDashboardData}>

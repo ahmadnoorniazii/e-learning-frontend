@@ -3,86 +3,160 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
+
+// Define public routes that don't require authentication
+const PUBLIC_ROUTES = [
+  '/',
+  '/about',
+  '/contact',
+  '/courses',
+  '/faq',
+  '/instructors', // Public instructors listing
+  '/auth/login',
+  '/auth/register',
+  '/test-api'
+];
+
+// Define role-based route permissions
+const ROLE_PERMISSIONS = {
+  admin: {
+    allowed: ['/admin', '/dashboard'],
+    blocked: ['/instructor', '/dashboard/student']
+  },
+  instructor: {
+    allowed: ['/instructor', '/dashboard'],
+    blocked: ['/admin', '/dashboard/student']
+  },
+  student: {
+    allowed: ['/dashboard/student', '/dashboard', '/profile', '/notifications'],
+    blocked: ['/admin', '/instructor']
+  }
+};
 
 export function DashboardRouter() {
   const { user, isAuthenticated, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (loading) return;
-
-    if (!isAuthenticated) {
-      // If not authenticated and trying to access protected routes, redirect to login
-      if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/instructor')) {
-        console.log('🔄 DashboardRouter: Redirecting unauthenticated user to login');
-        router.push('/auth/login');
+  // Check if current route is public
+  const isPublicRoute = () => {
+    return PUBLIC_ROUTES.some(route => {
+      if (route === '/') {
+        return pathname === '/';
       }
-      return;
-    }
+      return pathname.startsWith(route);
+    });
+  };
 
-    if (!user) return;
+  // Check if user has permission to access current route
+  const hasPermission = () => {
+    if (!user || !isAuthenticated) return false;
 
-    console.log('🔄 DashboardRouter: Current user role:', user.role, 'Current path:', pathname);
+    const userRole = user.role as keyof typeof ROLE_PERMISSIONS;
+    const permissions = ROLE_PERMISSIONS[userRole];
+    
+    if (!permissions) return false;
 
-    // Role-based dashboard routing
-    const handleDashboardRouting = () => {
+    // Check if route is explicitly blocked
+    const isBlocked = permissions.blocked.some(blockedRoute => 
+      pathname.startsWith(blockedRoute)
+    );
+    
+    if (isBlocked) return false;
+
+    // Check if route is explicitly allowed
+    const isAllowed = permissions.allowed.some(allowedRoute => 
+      pathname.startsWith(allowedRoute)
+    );
+
+    return isAllowed;
+  };
+
+  // Handle smart dashboard routing based on role
+  useEffect(() => {
+    if (loading || !isAuthenticated || !user) return;
+
+    // Handle /dashboard route - redirect to appropriate dashboard
+    if (pathname === '/dashboard') {
       switch (user.role) {
         case 'admin':
-          // Admin should go to admin panel
-          if (pathname === '/dashboard') {
-            console.log('🔄 DashboardRouter: Redirecting admin from /dashboard to /admin');
-            router.push('/admin');
-          }
-          // Prevent admin from accessing student/instructor dashboards
-          else if (pathname.startsWith('/instructor') && !pathname.startsWith('/admin')) {
-            console.log('🔄 DashboardRouter: Redirecting admin from instructor area to admin');
-            router.push('/admin');
-          }
-          else if (pathname.startsWith('/dashboard/student')) {
-            console.log('🔄 DashboardRouter: Redirecting admin from student dashboard to admin');
-            router.push('/admin');
-          }
+          console.log('🔄 DashboardRouter: Redirecting admin to /admin');
+          router.push('/admin');
           break;
-
         case 'instructor':
-          // Instructor should go to instructor dashboard
-          if (pathname === '/dashboard') {
-            console.log('🔄 DashboardRouter: Redirecting instructor from /dashboard to /instructor');
-            router.push('/instructor');
-          }
-          // Prevent instructor from accessing admin panel
-          else if (pathname.startsWith('/admin')) {
-            console.log('🔄 DashboardRouter: Redirecting instructor from admin to instructor dashboard');
-            router.push('/instructor');
-          }
-          else if (pathname.startsWith('/dashboard/student')) {
-            console.log('🔄 DashboardRouter: Redirecting instructor from student dashboard to instructor');
-            router.push('/instructor');
-          }
+          console.log('🔄 DashboardRouter: Redirecting instructor to /instructor');
+          router.push('/instructor');
           break;
-
         case 'student':
         default:
-          // Student should go to student dashboard
-          if (pathname.startsWith('/admin')) {
-            console.log('🔄 DashboardRouter: Redirecting student from admin to student dashboard');
-            router.push('/dashboard/student');
-          }
-          else if (pathname.startsWith('/instructor')) {
-            console.log('🔄 DashboardRouter: Redirecting student from instructor to student dashboard');
-            router.push('/dashboard/student');
-          }
-          else if (pathname === '/dashboard') {
-            console.log('🔄 DashboardRouter: Redirecting student from /dashboard to /dashboard/student');
-            router.push('/dashboard/student');
-          }
+          console.log('🔄 DashboardRouter: Redirecting student to /dashboard/student');
+          router.push('/dashboard/student');
           break;
       }
-    };
-
-    handleDashboardRouting();
+    }
   }, [user, isAuthenticated, loading, pathname, router]);
 
-  return null; // This component doesn't render anything
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Allow access to public routes
+  if (isPublicRoute()) {
+    return null;
+  }
+
+  // Redirect to login if not authenticated and trying to access protected route
+  if (!isAuthenticated) {
+    console.log('🔄 DashboardRouter: Redirecting unauthenticated user to login');
+    router.push('/auth/login');
+    return (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Block access if user doesn't have permission
+  if (!hasPermission()) {
+    console.log('� DashboardRouter: Access denied for', user?.role, 'to', pathname);
+    
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Access Denied</CardTitle>
+            <CardDescription>
+              You don&apos;t have permission to access this page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Your current role ({user?.role}) doesn&apos;t allow access to this area.
+            </p>
+            <Button 
+              onClick={() => router.back()} 
+              variant="outline" 
+              className="w-full"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return null; // Allow access - render nothing
 }

@@ -20,6 +20,7 @@ const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Courses', href: '/courses' },
   { name: 'About', href: '/about' },
+  {name: 'Instructors', href: '/instructors'},
 ];
 
 const mockNotifications = [
@@ -69,53 +70,46 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/95 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-gradient-to-r from-gray-900/95 via-slate-900/95 to-gray-900/95 backdrop-blur-xl supports-[backdrop-filter]:bg-gradient-to-r supports-[backdrop-filter]:from-gray-900/90 supports-[backdrop-filter]:via-slate-900/90 supports-[backdrop-filter]:to-gray-900/90 px-4 sm:px-6 lg:px-8 shadow-lg">
       <div className="container mx-auto flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-purple-600">
-            <BookOpen className="h-5 w-5 text-white" />
+        <Link href="/" className="flex items-center space-x-3 group">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+            <BookOpen className="h-6 w-6 text-white" />
           </div>
-          <span className="font-bold text-xl text-white">
+          <span className="font-bold text-xl bg-gradient-to-r from-white via-blue-100 to-cyan-100 bg-clip-text text-transparent group-hover:from-cyan-200 group-hover:via-blue-200 group-hover:to-purple-200 transition-all duration-300">
             EduPlatform
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          <Link
-            href="/instructors"
-            className={`text-sm font-medium transition-colors hover:text-primary ${
-              pathname === '/instructors'
-                ? 'text-blue-400'
-                : 'text-gray-300 hover:text-white'
-            }`}
-          >
-            Instructors
-          </Link>
+        <nav className="hidden md:flex items-center space-x-8">
+
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-semibold transition-all duration-300 relative group ${
                 pathname === item.href
-                  ? 'text-blue-400'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'text-cyan-400'
+                  : 'text-gray-300 hover:text-cyan-300'
               }`}
             >
               {item.name}
+              <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-full ${pathname === item.href ? 'w-full' : ''}`}></span>
             </Link>
           ))}
           {isAuthenticated && (
             <button
               onClick={handleDashboardClick}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-semibold transition-all duration-300 relative group ${
                 isDashboardActive()
-                  ? 'text-blue-400'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'text-cyan-400'
+                  : 'text-gray-300 hover:text-cyan-300'
               }`}
             >
               {getDashboardLabel()}
+              <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-full ${isDashboardActive() ? 'w-full' : ''}`}></span>
             </button>
           )}
           
@@ -123,14 +117,15 @@ export function Header() {
           {process.env.NODE_ENV === 'development' && (
             <Link
               href="/test-api"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
+              className={`text-sm font-semibold transition-all duration-300 relative group ${
                 pathname === '/test-api'
-                  ? 'text-blue-400'
-                  : 'text-gray-300 hover:text-white'
+                  ? 'text-cyan-400'
+                  : 'text-gray-300 hover:text-cyan-300'
               }`}
             >
               <TestTube className="h-4 w-4 inline mr-1" />
               API Test
+              <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-full ${pathname === '/test-api' ? 'w-full' : ''}`}></span>
             </Link>
           )}
         </nav>
@@ -142,29 +137,29 @@ export function Header() {
               {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative hidden md:flex text-gray-300 hover:text-white">
+                  <Button variant="ghost" size="icon" className="relative hidden md:flex text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300">
                     <Bell className="h-5 w-5" />
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs shadow-lg">
                       2
                     </Badge>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-80" align="end" forceMount>
-                  <div className="flex items-center justify-between p-4 border-b">
-                    <h3 className="font-semibold">Notifications</h3>
-                    <Link href="/notifications" className="text-sm text-primary hover:underline">
+                <DropdownMenuContent className="w-80 bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-xl" align="end" forceMount>
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-t-xl">
+                    <h3 className="font-semibold text-gray-900">Notifications</h3>
+                    <Link href="/notifications" className="text-sm text-cyan-600 hover:text-cyan-700 hover:underline font-medium">
                       View all
                     </Link>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {mockNotifications.slice(0, 4).map((notification) => (
-                      <div key={notification.id} className={`p-4 border-b hover:bg-muted/50 cursor-pointer ${notification.unread ? 'bg-blue-50/50' : ''}`}>
+                      <div key={notification.id} className={`p-4 border-b border-gray-100 hover:bg-cyan-50/50 cursor-pointer transition-all duration-200 ${notification.unread ? 'bg-blue-50/70' : ''}`}>
                         <div className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                          <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-gradient-to-r from-cyan-500 to-blue-500' : 'bg-gray-300'}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{notification.title}</p>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                            <p className="font-semibold text-sm text-gray-900">{notification.title}</p>
+                            <p className="text-sm text-gray-600 line-clamp-2">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
                           </div>
                         </div>
                       </div>
@@ -176,65 +171,71 @@ export function Header() {
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all">
-                    <Avatar className="h-10 w-10">
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full ring-2 ring-transparent hover:ring-cyan-400/30 transition-all duration-300 hover:scale-105">
+                    <Avatar className="h-10 w-10 ring-2 ring-white/20 hover:ring-cyan-400/50 transition-all duration-300">
                       <AvatarImage src={user?.avatar} alt={user?.name} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold">
                         {user?.name?.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <div className="flex items-center justify-start gap-2 p-2">
+                <DropdownMenuContent className="w-60 bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-xl" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-3 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-t-xl">
+                    <Avatar className="h-12 w-12 ring-2 ring-cyan-200">
+                      <AvatarImage src={user?.avatar} alt={user?.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white font-semibold">
+                        {user?.name?.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user?.name}</p>
-                      <p className="w-[200px] truncate text-sm text-muted-foreground">
+                      <p className="font-semibold text-gray-900">{user?.name}</p>
+                      <p className="w-[180px] truncate text-sm text-gray-600">
                         {user?.email}
                       </p>
-                      <p className="text-xs text-muted-foreground capitalize">
+                      <Badge variant="secondary" className="text-xs w-fit bg-cyan-100 text-cyan-700 hover:bg-cyan-200 capitalize">
                         {user?.role}
-                      </p>
+                      </Badge>
                     </div>
                   </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="flex items-center">
-                      <UserCircle className="h-4 w-4 mr-2" />
-                      Profile
+                  <DropdownMenuSeparator className="bg-gray-200" />
+                  <DropdownMenuItem asChild className="hover:bg-cyan-50 focus:bg-cyan-50">
+                    <Link href="/profile" className="flex items-center p-3 cursor-pointer">
+                      <UserCircle className="h-5 w-5 mr-3 text-cyan-600" />
+                      <span className="font-medium">Profile</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDashboardClick}>
-                    {getDashboardLabel()}
+                  <DropdownMenuItem onClick={handleDashboardClick} className="hover:bg-cyan-50 focus:bg-cyan-50 p-3 cursor-pointer">
+                    <span className="font-medium">{getDashboardLabel()}</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile/settings" className="flex items-center">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
+                  <DropdownMenuItem asChild className="hover:bg-cyan-50 focus:bg-cyan-50">
+                    <Link href="/profile/settings" className="flex items-center p-3 cursor-pointer">
+                      <Settings className="h-5 w-5 mr-3 text-cyan-600" />
+                      <span className="font-medium">Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   {process.env.NODE_ENV === 'development' && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/test-api">
-                        <TestTube className="h-4 w-4 mr-2" />
-                        API Test
+                    <DropdownMenuItem asChild className="hover:bg-cyan-50 focus:bg-cyan-50">
+                      <Link href="/test-api" className="flex items-center p-3 cursor-pointer">
+                        <TestTube className="h-5 w-5 mr-3 text-cyan-600" />
+                        <span className="font-medium">API Test</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Log out
+                  <DropdownMenuSeparator className="bg-gray-200" />
+                  <DropdownMenuItem onClick={handleLogout} className="hover:bg-red-50 focus:bg-red-50 p-3 cursor-pointer text-red-600">
+                    <LogOut className="h-5 w-5 mr-3" />
+                    <span className="font-medium">Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" asChild className="text-gray-300 hover:text-white">
+            <div className="flex items-center space-x-3">
+              <Button variant="ghost" asChild className="text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300 font-semibold">
                 <Link href="/auth/login">Sign In</Link>
               </Button>
-              <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Button asChild className="bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 hover:from-cyan-600 hover:via-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 rounded-xl font-semibold">
                 <Link href="/auth/register">Sign Up</Link>
               </Button>
             </div>
@@ -244,7 +245,7 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-gray-300 hover:text-white"
+            className="md:hidden text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-300"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -258,19 +259,30 @@ export function Header() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-gray-900">
-          <div className="container mx-auto py-4 space-y-4">
+        <div className="md:hidden border-t border-white/10 bg-gradient-to-r from-gray-900/98 via-slate-900/98 to-gray-900/98 backdrop-blur-xl">
+          <div className="container mx-auto py-6 space-y-6">
             {/* Mobile Navigation */}
             <nav className="flex flex-col space-y-2">
+              <Link
+                href="/instructors"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 text-left ${
+                  pathname === '/instructors'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                    : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Instructors
+              </Link>
               {navigation.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
+                  className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 text-left ${
                     pathname === item.href
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {item.name}
@@ -283,10 +295,10 @@ export function Header() {
                     handleDashboardClick();
                     setMobileMenuOpen(false);
                   }}
-                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
+                  className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 text-left ${
                     isDashboardActive()
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {getDashboardLabel()}
@@ -297,10 +309,10 @@ export function Header() {
                 <Link
                   href="/test-api"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3 py-2 text-sm font-medium rounded-md transition-colors text-left ${
+                  className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 text-left ${
                     pathname === '/test-api'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   <TestTube className="h-4 w-4 inline mr-2" />
@@ -309,13 +321,13 @@ export function Header() {
               )}
               
               {!isAuthenticated && (
-                <div className="flex flex-col space-y-2 pt-4 border-t">
-                  <Button variant="ghost" asChild className="justify-start text-gray-300 hover:text-white">
+                <div className="flex flex-col space-y-3 pt-6 border-t border-white/10">
+                  <Button variant="ghost" asChild className="justify-start text-gray-300 hover:text-white hover:bg-white/10 rounded-xl font-semibold">
                     <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                       Sign In
                     </Link>
                   </Button>
-                  <Button asChild className="justify-start bg-gradient-to-r from-blue-600 to-purple-600">
+                  <Button asChild className="justify-start bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 hover:from-cyan-600 hover:via-blue-700 hover:to-purple-700 shadow-lg rounded-xl font-semibold">
                     <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
                       Sign Up
                     </Link>

@@ -7,12 +7,12 @@ import { Footer } from './footer';
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  // Don't show header/footer on auth pages, admin pages, or instructor pages
+  // Don't show header/footer on auth pages, admin pages, or instructor dashboard pages
   const isAuthPage = pathname?.startsWith('/auth');
   const isAdminPage = pathname?.startsWith('/admin');
-  const isInstructorPage = pathname?.startsWith('/instructor');
+  const isInstructorDashboard = pathname?.startsWith('/instructor') && !pathname?.startsWith('/instructors');
   
-  if (isAuthPage || isAdminPage || isInstructorPage) {
+  if (isAuthPage || isAdminPage || isInstructorDashboard) {
     return <>{children}</>;
   }
 

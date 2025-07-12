@@ -75,7 +75,12 @@ export default function OrdersPage() {
         pageSize: 100,
         filters
       });
-      setOrders(response.data || []);
+      setOrders(
+        (response.data || []).map((order: any) => ({
+          ...order,
+          id: order.id.toString(),
+        }))
+      );
     } catch (error) {
       console.error('Error fetching orders:', error);
       setError('Failed to load orders. Please check your Strapi backend connection.');
