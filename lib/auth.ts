@@ -65,7 +65,7 @@ class AuthService {
       // Use email as username if name is not provided or is just email
       const username = name && name !== email ? name.replace(/\s+/g, '').toLowerCase() : email.split('@')[0];
       
-      const response = await apiClient.register(username, email, password);
+      const response = await apiClient.register(username, email, password, role);
       
       const user: AuthUser = {
         id: response.user.id.toString(),

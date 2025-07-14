@@ -35,11 +35,11 @@ console.log('Transformed queryParams:', JSON.stringify(queryParams, null, 2));
 
 const queryString = qs.stringify(queryParams, { 
   encode: false,
-  arrayFormat: 'brackets',
-  allowDots: true
+  arrayFormat: 'indices',
+  allowDots: false
 });
 
 console.log('Generated query string:', queryString);
 console.log('Full URL:', `/enrollments?${queryString}`);
-console.log('Expected format: filters[student][id][]=10&filters[course][id][]=22');
-console.log('Match?', queryString.includes('filters[student][id][]=10') && queryString.includes('filters[course][id][]=22'));
+console.log('Expected v5 format: filters[student][id][0]=10&filters[course][id][0]=22');
+console.log('Match?', queryString.includes('filters[student][id][0]=10') && queryString.includes('filters[course][id][0]=22'));

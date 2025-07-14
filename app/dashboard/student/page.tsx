@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -14,7 +14,7 @@ import {
   Star,
   Target,
   CheckCircle,
-  Download, // ✅ FIXED: Added missing import
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,21 +24,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatsCard } from '@/components/ui/stats-card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
-import { strapiAPI } from '@/lib/strapi';
-import { Course, Certificate } from '@/lib/types';
-
-interface EnrolledCourse extends Course {
-  progress: number;
-  enrollmentDate: string;
-}
+import { useStudentDashboard } from '@/hooks/use-student-dashboard';
 
 export default function StudentDashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use the custom dashboard hook
+  const {
+    inProgressCourses,
+    completedCourses,
+    certificates,
+    stats,
+    recentActivity,
+    learningGoals,
+    loading,
+    error,
+    refetch
+  } = useStudentDashboard();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -50,141 +53,58 @@ export default function StudentDashboard() {
         } else if (user.role === 'instructor') {
           router.push('/instructor');
         }
-      } else {
-        fetchDashboardData();
       }
+      // No need to fetch data manually - the hook handles it
     }
   }, [isAuthenticated, authLoading, user, router]);
 
-  const fetchDashboardData = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [enrollmentsResponse, certificatesResponse] = await Promise.all([
-        strapiAPI.getEnrollments({ userId: user.id }),
-        strapiAPI.getCertificates({ userId: user.id }),
-      ]);
-
-      const enrolledCoursesData: EnrolledCourse[] = [];
-
-      if (enrollmentsResponse.data) {
-        for (const enrollment of enrollmentsResponse.data) {
-          const courseId = enrollment.attributes.course?.data?.id;
-          if (courseId) {
-            try {
-              const [courseResponse, progressResponse] = await Promise.all([
-                strapiAPI.getCourseById(courseId.toString()),
-                strapiAPI.getProgress(user.id, courseId.toString()),
-              ]);
-
-              if (courseResponse.data) {
-                const courseData = courseResponse.data;
-                const progressData = progressResponse.data?.[0];
-
-                const course: EnrolledCourse = {
-                  id: courseData.id.toString(),
-                  title: courseData.attributes.title,
-                  description: courseData.attributes.description,
-                  instructor: {
-                    id: courseData.attributes.instructor?.data?.id.toString() || '1',
-                    name: courseData.attributes.instructor?.data?.attributes.username || 'Unknown Instructor',
-                    email: courseData.attributes.instructor?.data?.attributes.email || '',
-                    role: 'instructor',
-                    avatar: courseData.attributes.instructor?.data?.attributes.profile?.avatar?.url,
-                    createdAt: new Date().toISOString(),
-                  },
-                  thumbnail:
-                    courseData.attributes.thumbnail?.data?.attributes.url ||
-                    'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800',
-                  price: courseData.attributes.price,
-                  category: courseData.attributes.category,
-                  level: courseData.attributes.level as 'beginner' | 'intermediate' | 'advanced',
-                  duration: courseData.attributes.duration || 0,
-                  lessonsCount: courseData.attributes.lessons?.data?.length || 0,
-                  studentsCount: courseData.attributes.studentsCount || 0,
-                  rating: courseData.attributes.rating || 0,
-                  reviewsCount: courseData.attributes.reviewsCount || 0,
-                  tags: courseData.attributes.tags || [],
-                  createdAt: courseData.attributes.createdAt,
-                  lessons:
-                    courseData.attributes.lessons?.data?.map((lesson) => ({
-                      id: lesson.id.toString(),
-                      title: lesson.attributes.title,
-                      description: lesson.attributes.description,
-                      duration: lesson.attributes.duration,
-                      order: lesson.attributes.order,
-                      videoUrl: lesson.attributes.videoUrl,
-                    })) || [],
-                  progress: progressData?.attributes.percentage || 0,
-                  enrollmentDate: enrollment.attributes.enrollmentDate || enrollment.attributes.enrolledAt || new Date().toISOString(),
-                };
-
-                enrolledCoursesData.push(course);
-              }
-            } catch (err) {
-              console.error('Error fetching course data:', err);
-            }
-          }
-        }
-      }
-
-      setEnrolledCourses(enrolledCoursesData);
-
-      const certificatesData: Certificate[] =
-        certificatesResponse.data?.map((cert) => ({
-          id: cert.id.toString(),
-          courseId: cert.attributes.course?.data?.id.toString() || '',
-          courseName: cert.attributes.course?.data?.attributes.title || 'Unknown Course',
-          userId: user.id,
-          userName: user.name,
-          completedAt: cert.attributes.issuedAt,
-          certificateUrl: cert.attributes.certificateUrl || '#',
-        })) || [];
-
-      setCertificates(certificatesData);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+  // Helper function to get proper thumbnail URL
+  const getThumbnailUrl = (thumbnail: any) => {
+    if (!thumbnail) return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800';
+    
+    // Check if it's a Strapi media object with formats
+    if (thumbnail.formats && thumbnail.formats.medium) {
+      return `${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}${thumbnail.formats.medium.url}`;
     }
+    
+    // Check if it's a Strapi media object with direct url
+    if (thumbnail.url) {
+      return `${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}${thumbnail.url}`;
+    }
+    
+    // Fallback to default image
+    return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800';
   };
 
-  const stats = [
+  // Create stats for the UI components
+  const dashboardStats = [
     {
       title: 'Courses Enrolled',
-      value: enrolledCourses.length.toString(),
+      value: stats.totalEnrollments.toString(),
       description: 'Active learning',
       icon: BookOpen,
-      trend: { value: enrolledCourses.length, isPositive: true },
+      trend: { value: stats.totalEnrollments, isPositive: true },
     },
     {
       title: 'Hours Learned',
-      value: `${Math.round(
-        enrolledCourses.reduce((total, course) => total + (course.duration * course.progress) / 100, 0) / 60
-      )}h`,
+      value: `${stats.hoursLearned}h`,
       description: 'Total progress',
       icon: Clock,
-      trend: { value: 15, isPositive: true },
+      trend: { value: Math.round(stats.hoursLearned), isPositive: true },
     },
     {
       title: 'Certificates',
-      value: certificates.length.toString(),
+      value: stats.totalCertificates.toString(),
       description: 'Completed',
       icon: Award,
-      trend: { value: certificates.length, isPositive: true },
+      trend: { value: stats.totalCertificates, isPositive: true },
     },
     {
       title: 'Average Progress',
-      value: `${Math.round(
-        enrolledCourses.reduce((total, course) => total + course.progress, 0) / (enrolledCourses.length || 1)
-      )}%`,
+      value: `${stats.averageProgress}%`,
       description: 'Across all courses',
       icon: TrendingUp,
-      trend: { value: 5, isPositive: true },
+      trend: { value: stats.averageProgress, isPositive: true },
     },
   ];
 
@@ -231,7 +151,7 @@ export default function StudentDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
+          {dashboardStats.map((stat, index) => (
             <StatsCard key={index} {...stat} />
           ))}
         </div>
@@ -240,60 +160,57 @@ export default function StudentDashboard() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             <Tabs defaultValue="progress" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="progress">In Progress</TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
-                <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
               </TabsList>
 
               <TabsContent value="progress" className="space-y-4">
-                {enrolledCourses.filter(course => course.progress < 100).length > 0 ? (
+                {inProgressCourses.length > 0 ? (
                   <div className="grid gap-4">
-                    {enrolledCourses
-                      .filter(course => course.progress < 100)
-                      .map((course) => (
-                        <Card key={course.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
-                          <CardContent className="p-6">
-                            <div className="flex items-start space-x-4">
-                              <img
-                                src={course.thumbnail}
-                                alt={course.title}
-                                className="w-20 h-20 rounded-lg object-cover"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-lg mb-1">{course.title}</h3>
-                                <p className="text-sm text-muted-foreground mb-3">
-                                  by {course.instructor.name}
-                                </p>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between text-sm">
-                                    <span>Progress</span>
-                                    <span>{course.progress}%</span>
-                                  </div>
-                                  <ProgressBar value={course.progress} className="w-full" />
+                    {inProgressCourses.map((enrollment) => (
+                      <Card key={enrollment.id} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                        <CardContent className="p-6">
+                          <div className="flex items-start space-x-4">
+                            <img
+                              src={getThumbnailUrl(enrollment.course.thumbnail)}
+                              alt={enrollment.course.title}
+                              className="w-20 h-20 rounded-lg object-cover"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg mb-1">{enrollment.course.title}</h3>
+                              <p className="text-sm text-muted-foreground mb-3">
+                                by {enrollment.course.instructor?.username || 'Unknown Instructor'}
+                              </p>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Progress</span>
+                                  <span>{enrollment.progress}%</span>
                                 </div>
-                                <div className="flex items-center space-x-4 mt-3 text-sm text-muted-foreground">
-                                  <span className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    {Math.floor(course.duration / 60)}h {course.duration % 60}m
-                                  </span>
-                                  <span className="flex items-center">
-                                    <BookOpen className="h-4 w-4 mr-1" />
-                                    {course.lessonsCount} lessons
-                                  </span>
-                                  <Badge variant="outline">{course.level}</Badge>
-                                </div>
+                                <ProgressBar value={enrollment.progress} className="w-full" />
                               </div>
-                              <Button asChild>
-                                <Link href={`/courses/${course.id}/learn`}>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  Continue
-                                </Link>
-                              </Button>
+                              <div className="flex items-center space-x-4 mt-3 text-sm text-muted-foreground">
+                                <span className="flex items-center">
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  {Math.floor(enrollment.course.duration / 60)}h {enrollment.course.duration % 60}m
+                                </span>
+                                <span className="flex items-center">
+                                  <BookOpen className="h-4 w-4 mr-1" />
+                                  {enrollment.course.lessons?.length || 0} lessons
+                                </span>
+                                <Badge variant="outline">{enrollment.course.difficultyLevel || 'beginner'}</Badge>
+                              </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                            <Button asChild>
+                              <Link href={`/courses/${enrollment.course?.documentId}/learn`}>
+                                <Play className="h-4 w-4 mr-2" />
+                                Continue
+                              </Link>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -309,28 +226,38 @@ export default function StudentDashboard() {
                 )}
               </TabsContent>
 
-              <TabsContent value="completed">
-                {certificates.length > 0 ? (
+              <TabsContent value="completed" className="space-y-4">
+                {completedCourses.length > 0 ? (
                   <div className="grid gap-4">
-                    {certificates.map((cert) => (
-                      <Card key={cert.id} className="border-0 shadow-md">
+                    {completedCourses.map((enrollment) => (
+                      <Card key={enrollment.id} className="border-0 shadow-md">
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                                <Award className="h-6 w-6 text-white" />
-                              </div>
+                              <img
+                                src={getThumbnailUrl(enrollment.course.thumbnail)}
+                                alt={enrollment.course.title}
+                                className="w-12 h-12 rounded-lg object-cover"
+                              />
                               <div>
-                                <h3 className="font-semibold">{cert.courseName}</h3>
+                                <h3 className="font-semibold">{enrollment.course.title}</h3>
                                 <p className="text-sm text-muted-foreground">
-                                  Completed on {new Date(cert.completedAt).toLocaleDateString()}
+                                  Completed on {enrollment.completionDate ? new Date(enrollment.completionDate).toLocaleDateString() : 'Recently'}
                                 </p>
                               </div>
                             </div>
-                            <Button variant="outline">
-                              <Download className="h-4 w-4 mr-2" />
-                              Download Certificate
-                            </Button>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Completed
+                              </Badge>
+                              <Button variant="outline" asChild>
+                                <Link href={`/courses/${enrollment.course.id}/learn`}>
+                                  <BookOpen className="h-4 w-4 mr-2" />
+                                  Review
+                                </Link>
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -338,29 +265,16 @@ export default function StudentDashboard() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Award className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
+                    <CheckCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No completed courses yet</h3>
                     <p className="text-muted-foreground mb-4">
-                      Complete courses to earn certificates
+                      Complete courses to see them here
                     </p>
                     <Button asChild>
                       <Link href="/courses">Browse Courses</Link>
                     </Button>
                   </div>
                 )}
-              </TabsContent>
-
-              <TabsContent value="wishlist">
-                <div className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No courses in wishlist</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Browse courses and add them to your wishlist
-                  </p>
-                  <Button asChild>
-                    <Link href="/courses">Browse Courses</Link>
-                  </Button>
-                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -377,18 +291,12 @@ export default function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Complete 3 courses this month</span>
-                    <Badge variant="outline">1/3</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Study 20 hours this week</span>
-                    <Badge variant="outline">12/20h</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Earn 2 certificates</span>
-                    <Badge variant="outline">{certificates.length}/2</Badge>
-                  </div>
+                  {learningGoals.map((goal) => (
+                    <div key={goal.id} className="flex items-center justify-between">
+                      <span className="text-sm">{goal.title}</span>
+                      <Badge variant="outline">{goal.current}/{goal.target} {goal.unit}</Badge>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -402,27 +310,67 @@ export default function StudentDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {enrolledCourses.slice(0, 3).map((course, index) => (
-                  <div key={course.id} className="flex items-start space-x-3">
-                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
-                      <Play className="h-4 w-4" />
+                {recentActivity.length > 0 ? (
+                  recentActivity.slice(0, 5).map((activity) => (
+                    <div key={activity.id} className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+                        {activity.icon === 'play' && <Play className="h-4 w-4" />}
+                        {activity.icon === 'check' && <CheckCircle className="h-4 w-4" />}
+                        {activity.icon === 'award' && <Award className="h-4 w-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">{activity.subtitle}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(activity.date).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">Enrolled in course</p>
-                      <p className="text-xs text-muted-foreground">{course.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(course.enrollmentDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {enrolledCourses.length === 0 && (
+                  ))
+                ) : (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No recent activity
                   </p>
                 )}
               </CardContent>
             </Card>
+
+            {/* Certificates */}
+            {certificates.length > 0 && (
+              <Card className="border-0 shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Award className="h-5 w-5" />
+                    <span>Certificates</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {certificates.slice(0, 3).map((cert) => (
+                    <div key={cert.id} className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Award className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{cert.course.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(cert.issuedDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={cert.certificateUrl || '#'} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
+                  ))}
+                  {certificates.length > 3 && (
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href="#certificates">View All Certificates</Link>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Recommended Courses */}
             <Card className="border-0 shadow-md">

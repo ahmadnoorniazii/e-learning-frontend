@@ -39,6 +39,7 @@ export interface RawReviewData {
 export function normalizeCourseData(rawCourse: RawCourseData, baseURL: string = ''): Course {
   // Log what data we received to help with debugging
   console.log('🔍 Normalizing course data:', {
+    course: rawCourse,
     id: rawCourse.id,
     documentId: rawCourse.documentId,
     title: rawCourse.title,

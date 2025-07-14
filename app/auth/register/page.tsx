@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { authWithRoleService } from '@/lib/auth-with-role';
 import { useAuth } from '@/hooks/use-auth';
 
 export default function RegisterPage() {
@@ -26,6 +25,7 @@ export default function RegisterPage() {
   const [warning, setWarning] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { register } = useAuth();
 
   const validateForm = () => {
     if (!name.trim()) {
@@ -80,29 +80,17 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Use email as username if name is not provided or is just email
-      const username = name && name !== email ? name.replace(/\s+/g, '').toLowerCase() : email.split('@')[0];
-      
       console.log('🚀 Starting registration with role:', role);
       
-      const response = await authWithRoleService.registerWithRole({
-        username,
-        email: email.trim(),
-        password,
-        role,
-      });
+      const user = await register(name, email, password, role);
 
-      if (response.success) {
-        setSuccess(`Account created successfully as ${response.user.role}! Redirecting...`);
-        
-        if (response.warning) {
-          setWarning(response.warning);
-        }
+      if (user) {
+        setSuccess(`Account created successfully as ${user.role}! Redirecting...`);
         
         // Redirect after a short delay to show success message
         setTimeout(() => {
           // Redirect based on role
-          switch (response.user.role) {
+          switch (user.role) {
             case 'admin':
               router.push('/admin');
               break;

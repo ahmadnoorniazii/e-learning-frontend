@@ -83,8 +83,8 @@ export default function Home() {
       thumbnail: thumbnailUrl || undefined,
       avatar: course.avatar?.url 
         ? `${baseURL}${course.avatar.url}`
-        : course.avatar?.data?.attributes?.url
-        ? `${baseURL}${course.avatar.data.attributes.url}`
+        : (course.avatar as any)?.data?.attributes?.url
+        ? `${baseURL}${(course.avatar as any).data.attributes.url}`
         : undefined,
       price: course.price ?? course.attributes?.price ?? 0,
       category: course.category?.data?.attributes?.name || course.category?.name || '',

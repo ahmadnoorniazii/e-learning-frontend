@@ -81,8 +81,8 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
 
       // Use the new learning workflow
       const workflow = await courseService.completeWorkflow();
-      const courseIdForAPI = parseInt(numericCourseId || course.id);
-      
+      debugger;
+      const courseIdForAPI = course?.id?.toString();
       const enrollmentData = await workflow.enrollInCourse(courseIdForAPI, course.price);
       
       setEnrollment(enrollmentData);

@@ -50,7 +50,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
 
     // Transform the course data to match the expected format using the normalizer
     const course: Course = normalizeCourseData(courseResponse as any, baseURL);
-
+    console.log("course response hereeee", course)
     // Fetch course reviews
     const reviewsResponse = await courseService.getCourseReviews(params.id, { pageSize: 20 });
     

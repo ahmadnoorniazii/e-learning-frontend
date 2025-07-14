@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, Settings, 
@@ -17,242 +17,110 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
-import courseService from '@/lib/course-service';
-import { apiClient, Course, Lesson, Enrollment, LessonProgress, CourseReview, Certificate } from '@/lib/api-client';
 import { useToast } from '@/hooks/use-toast';
-
-interface LearningPageData {
-  course: Course;
-  enrollment: Enrollment;
-  lessons: Lesson[];
-  lessonProgresses: LessonProgress[];
-  reviews: CourseReview[];
-  certificate?: Certificate;
-}
+import { useLearningWorkflow } from '@/hooks/use-learning-workflow';
+import { useLessonNavigation } from '@/hooks/use-lesson-navigation';
+import { useReviewDialog } from '@/hooks/use-review-dialog';
+import { useCertificateDialog } from '@/hooks/use-certificate-dialog';
 
 export default function LearningPage({ params }: { params: { id: string } }) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
-  const [data, setData] = useState<LearningPageData | null>(null);
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
-  const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [totalTime, setTotalTime] = useState(0);
+  // Main learning workflow hook
+  const [learningState, learningActions] = useLearningWorkflow();
   
-  // Review dialog state
-  const [showReviewDialog, setShowReviewDialog] = useState(false);
-  const [reviewData, setReviewData] = useState({
-    rating: 5,
-    title: '',
-    comment: ''
-  });
+  // Lesson navigation hook
+  const [navState, navActions] = useLessonNavigation(
+    learningState.lessons, 
+    learningActions.findCurrentLessonIndex()
+  );
   
-  // Certificate dialog state
-  const [showCertificateDialog, setShowCertificateDialog] = useState(false);
+  // Review dialog hook
+  const [reviewState, reviewActions] = useReviewDialog();
+  
+  // Certificate dialog hook
+  const [certState, certActions] = useCertificateDialog();
 
-  const initializeLearningData = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      // First get course details to obtain the numeric ID
-      console.log('🔍 Learning page: Fetching course data for ID:', params.id);
-      const course = await courseService.getCourseById(params.id);
-      
-      if (!course) {
-        setError('Course not found');
-        return;
-      }
-
-      console.log('✅ Learning page: Got course data:', course);
-      const numericCourseId = course.id; // Get the numeric ID
-
-      // Check if user is enrolled using the numeric course ID
-      console.log('🔍 Checking enrollment status for user:', user?.id, 'course numeric ID:', numericCourseId);
-      const enrollment = await courseService.checkEnrollmentStatus(numericCourseId.toString());
-      console.log('📋 Enrollment result:', enrollment);
-      
-      if (!enrollment) {
-        console.log('❌ User not enrolled, redirecting to course page');
-        router.push(`/courses/${params.id}`);
-        return;
-      }
-      
-      console.log('✅ User is enrolled:', enrollment);
-
-      // Handle both normalized and non-normalized lesson data
-      const lessonsRaw = course.lessons || [];
-      const lessons: Lesson[] = Array.isArray(lessonsRaw) 
-        ? lessonsRaw 
-        : (lessonsRaw as any)?.data || [];
-
-      console.log('📚 Lessons data:', { 
-        lessonsRaw, 
-        lessons, 
-        lessonsCount: lessons.length,
-        courseHasLessonsField: 'lessons' in course
-      });
-
-      // If no lessons found, show error
-      if (lessons.length === 0) {
-        setError('This course has no lessons available yet.');
-        return;
-      }
-
-      // Get lesson progress for this enrollment
-      const lessonProgresses = await courseService.getLessonProgressForCourse(enrollment.id.toString());
-
-      // Get course reviews
-      const reviewsResponse = await courseService.getCourseReviews(params.id);
-      const reviews = reviewsResponse.data;
-
-      // Check for certificate if course is completed
-      let certificate: Certificate | undefined;
-      if (enrollment.isCompleted) {
-        const certificates = await courseService.getMyCertificates();
-        certificate = certificates.find(cert => 
-          cert.course.data.id.toString() === params.id &&
-          cert.student.data.id.toString() === user.id
-        );
-      }
-
-      // Find current lesson (first incomplete or first lesson)
-      let lessonIndex = 0;
-      const incompleteLessonIndex = lessons.findIndex((lesson: any) => {
-        const progress = lessonProgresses.find(p => 
-          p.lesson?.data?.id?.toString() === lesson.id.toString()
-        );
-        return !progress || !progress.isCompleted;
-      });
-      
-      if (incompleteLessonIndex !== -1) {
-        lessonIndex = incompleteLessonIndex;
-      }
-
-      setData({
-        course,
-        enrollment,
-        lessons,
-        lessonProgresses,
-        reviews,
-        certificate
-      });
-
-      setCurrentLesson(lessons[lessonIndex] || null);
-      setCurrentLessonIndex(lessonIndex);
-
-    } catch (err) {
-      console.error('Error fetching learning data:', err);
-      setError('Failed to load course data');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, params.id, router]);
-
+  // Initialize learning environment
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/auth/login');
       return;
     }
-    initializeLearningData();
-  }, [isAuthenticated, params.id, initializeLearningData, router]);
-
-  const getLessonProgress = (lessonId: number): LessonProgress | null => {
-    if (!data) return null;
-    return data.lessonProgresses.find(p => p.lesson?.data?.id === lessonId) || null;
-  };
-
-  const updateLessonProgress = async (lessonId: number, timeSpent: number, progressPercentage: number) => {
-    if (!data || !user) return;
-
-    try {
-      const workflow = await courseService.completeWorkflow();
-      
-      // Track lesson progress
-      const updatedProgress = await workflow.trackLessonProgress(
-        data.enrollment.id.toString(),
-        lessonId,
-        timeSpent,
-        progressPercentage
-      );
-
-      // Update local state
-      const updatedProgresses = [...data.lessonProgresses];
-      const existingIndex = updatedProgresses.findIndex(p => p.lesson?.data?.id === lessonId);
-      
-      if (existingIndex !== -1) {
-        updatedProgresses[existingIndex] = updatedProgress;
-      } else {
-        updatedProgresses.push(updatedProgress);
+    
+    const initializeAsync = async () => {
+      const success = await learningActions.initializeLearning(params.id);
+      if (!success && learningState.error === 'Not enrolled in this course') {
+        router.push(`/courses/${params.id}`);
       }
+    };
+    
+    initializeAsync();
+  }, [isAuthenticated, params.id, router]);
 
-      // Update course progress
-      const updatedEnrollment = await workflow.updateCourseProgress(data.enrollment.id.toString());
+  // Update current lesson when lessons are first loaded, but respect user navigation choices
+  useEffect(() => {
+    if (learningState.lessons.length > 0 && !navState.currentLesson) {
+      // Only auto-set the lesson if no lesson is currently selected
+      const currentIndex = learningActions.findCurrentLessonIndex();
+      const currentLesson = learningState.lessons[currentIndex];
+      if (currentLesson) {
+        console.log('🎯 Auto-setting initial lesson:', currentLesson.title, 'at index:', currentIndex);
+        navActions.setCurrentLesson(currentLesson, currentIndex);
+      }
+    }
+  }, [learningState.lessons, navState.currentLesson]);
 
-      setData({
-        ...data,
-        enrollment: updatedEnrollment,
-        lessonProgresses: updatedProgresses
-      });
-
+  // Auto-update course progress after lesson completion
+  const handleLessonProgressUpdate = async (lessonId: number, timeSpent: number, progressPercentage: number) => {
+    const updatedProgress = await learningActions.trackLessonProgress(lessonId, timeSpent, progressPercentage);
+    if (updatedProgress) {
+      // Update course-level progress
+      const updatedEnrollment = await learningActions.updateCourseProgress();
+      
       // Check if course is completed and show certificate option
-      if (updatedEnrollment.isCompleted && !data.certificate) {
+      if (updatedEnrollment?.isCompleted && !learningState.certificate) {
         toast({
           title: "🎉 Congratulations!",
           description: "You've completed the course! Generate your certificate now.",
         });
-        setShowCertificateDialog(true);
+        certActions.openCertificateDialog();
       }
+    }
+  };
 
-    } catch (error) {
-      console.error('Error updating lesson progress:', error);
+  const handleMarkLessonCompleted = async (lessonId: number) => {
+    const lesson = learningState.lessons.find(l => l.id === lessonId);
+    if (!lesson) return;
+    const success = await learningActions.markLessonCompleted(lessonId);
+    if (success) {
+      toast({
+        title: "Lesson Completed!",
+        description: `Great job completing "${lesson.title}"`,
+      });
+
+      // Auto-update course progress
+      await learningActions.updateCourseProgress();
+
+      // Auto-navigate to next lesson if available
+      if (navState.currentLessonIndex < learningState.lessons.length - 1) {
+        setTimeout(() => {
+          navActions.goToNextLesson();
+        }, 1500);
+      }
+    } else {
       toast({
         title: "Error",
-        description: "Failed to update lesson progress",
+        description: "Failed to mark lesson as completed. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  const markLessonCompleted = async (lessonId: number) => {
-    const lesson = data?.lessons.find(l => l.id === lessonId);
-    if (!lesson) return;
-
-    await updateLessonProgress(lessonId, currentTime || lesson.duration || 0, 100);
-    
-    toast({
-      title: "Lesson Completed!",
-      description: `Great job completing "${lesson.title}"`,
-    });
-  };
-
-  const goToNextLesson = () => {
-    if (!data || currentLessonIndex >= data.lessons.length - 1) return;
-    
-    const nextIndex = currentLessonIndex + 1;
-    setCurrentLessonIndex(nextIndex);
-    setCurrentLesson(data.lessons[nextIndex]);
-    setCurrentTime(0);
-  };
-
-  const goToPreviousLesson = () => {
-    if (!data || currentLessonIndex <= 0) return;
-    
-    const prevIndex = currentLessonIndex - 1;
-    setCurrentLessonIndex(prevIndex);
-    setCurrentLesson(data.lessons[prevIndex]);
-    setCurrentTime(0);
-  };
-
-  const submitReview = async () => {
-    if (!data || !reviewData.title.trim() || !reviewData.comment.trim()) {
+  const handleSubmitReview = async () => {
+    if (!reviewActions.isReviewValid()) {
       toast({
         title: "Error",
         description: "Please fill in all review fields",
@@ -261,69 +129,47 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       return;
     }
 
-    try {
-      const workflow = await courseService.completeWorkflow();
-      const review = await workflow.leaveReview(
-        data.course.id,
-        reviewData.rating,
-        reviewData.title,
-        reviewData.comment
-      );
+    const review = await learningActions.submitReview(
+      reviewState.reviewData.rating,
+      reviewState.reviewData.title,
+      reviewState.reviewData.comment
+    );
 
-      setData({
-        ...data,
-        reviews: [review, ...data.reviews]
-      });
-
-      setShowReviewDialog(false);
-      setReviewData({ rating: 5, title: '', comment: '' });
-      
+    if (review) {
+      reviewActions.closeReviewDialog();
+      reviewActions.resetReviewData();
       toast({
         title: "Review Submitted!",
         description: "Thank you for your feedback",
       });
-    } catch (error) {
-      console.error('Error submitting review:', error);
+    } else {
       toast({
         title: "Error",
-        description: "Failed to submit review",
+        description: "Failed to submit review. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  const generateCertificate = async () => {
-    if (!data) return;
-
-    try {
-      const workflow = await courseService.completeWorkflow();
-      const certificate = await workflow.generateCertificate(
-        data.enrollment.id.toString(),
-        data.course.id.toString()
-      );
-
-      setData({
-        ...data,
-        certificate
-      });
-
-      setShowCertificateDialog(false);
-      
+  const handleGenerateCertificate = async () => {
+    const certificate = await learningActions.generateCertificate();
+    if (certificate) {
+      certActions.closeCertificateDialog();
       toast({
         title: "Certificate Generated!",
         description: "Your certificate is ready for download",
       });
-    } catch (error) {
-      console.error('Error generating certificate:', error);
+    } else {
+      certActions.closeCertificateDialog();
       toast({
         title: "Error",
-        description: "Failed to generate certificate",
+        description: "Failed to generate certificate. Please try again.",
         variant: "destructive"
       });
     }
   };
 
-  if (loading) {
+  if (learningState.loading) {
     return (
       <div className="container py-16 text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
@@ -332,17 +178,17 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (error) {
+  if (learningState.error) {
     return (
       <div className="container py-16 text-center">
         <Alert className="max-w-md mx-auto">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{learningState.error}</AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  if (!data || !currentLesson) {
+  if (!learningState.course || !navState.currentLesson) {
     return (
       <div className="container py-16 text-center">
         <p>No course data available</p>
@@ -350,8 +196,15 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const progressPercentage = data.enrollment.progress || 0;
-  const completedLessons = data.lessonProgresses.filter(p => p.isCompleted).length;
+  // Debug logging
+  console.log('📊 Learning state:', {
+    course: learningState.course?.title,
+    enrollment: learningState.enrollment?.id,
+    lessons: learningState.lessons.length,
+    progresses: learningState.lessonProgresses.length,
+    currentLesson: navState.currentLesson?.title,
+    overallProgress: learningState.overallProgress
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -368,26 +221,26 @@ export default function LearningPage({ params }: { params: { id: string } }) {
               Back to Course
             </Button>
             <div>
-              <h1 className="text-lg font-semibold">{data.course.title}</h1>
+              <h1 className="text-lg font-semibold">{learningState.course.title}</h1>
               <p className="text-sm text-muted-foreground">
-                Lesson {currentLessonIndex + 1} of {data.lessons.length}
+                Lesson {navState.currentLessonIndex + 1} of {learningState.totalLessons}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-sm font-medium">{progressPercentage}% Complete</p>
-              <ProgressBar value={progressPercentage} className="w-32" />
+              <p className="text-sm font-medium">{learningState.overallProgress}% Complete</p>
+              <ProgressBar value={learningState.overallProgress} className="w-32" />
             </div>
             
-            {data.enrollment.isCompleted && (
+            {learningState.enrollment?.isCompleted && (
               <Button
-                onClick={() => setShowCertificateDialog(true)}
+                onClick={() => certActions.openCertificateDialog()}
                 className="bg-gradient-to-r from-purple-600 to-blue-600"
               >
                 <Award className="h-4 w-4 mr-2" />
-                {data.certificate ? 'View Certificate' : 'Get Certificate'}
+                {learningState.certificate ? 'View Certificate' : 'Get Certificate'}
               </Button>
             )}
           </div>
@@ -400,20 +253,60 @@ export default function LearningPage({ params }: { params: { id: string } }) {
           {/* Video Player */}
           <Card className="mb-6">
             <CardContent className="p-0">
-              <div className="aspect-video bg-black rounded-lg relative">
-                {currentLesson.videoUrl ? (
-                  <video
-                    className="w-full h-full rounded-lg"
-                    controls
-                    src={currentLesson.videoUrl}
-                    onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                    onLoadedMetadata={(e) => setTotalTime(e.currentTarget.duration)}
-                  />
+              <div key={`lesson-${navState.currentLesson.id}`} className="aspect-video bg-black rounded-lg relative">
+                {console.log('🎬 Rendering lesson content for:', navState.currentLesson.title, 'ID:', navState.currentLesson.id)}
+                {navState.currentLesson.videoUrl ? (
+                  <div className="w-full h-full">
+                    {navState.currentLesson.videoUrl.includes('youtube.com') || navState.currentLesson.videoUrl.includes('youtu.be') ? (
+                      // Handle YouTube URLs
+                      <iframe
+                        className="w-full h-full rounded-lg"
+                        src={navState.currentLesson.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={navState.currentLesson.title}
+                      />
+                    ) : (
+                      // Handle direct video files
+                      <video
+                        className="w-full h-full rounded-lg"
+                        controls
+                        src={navState.currentLesson.videoUrl}
+                        onTimeUpdate={(e) => {
+                          const currentTime = e.currentTarget.currentTime;
+                          navActions.setCurrentTime(currentTime);
+                          
+                          // Auto-update progress every 30 seconds to avoid too many API calls
+                          if (currentTime > 0 && navState.totalTime > 0 && 
+                              Math.floor(currentTime) % 30 === 0 && 
+                              Math.floor(currentTime) !== navState.lastProgressUpdate) {
+                            const progressPercent = Math.min(Math.round((currentTime / navState.totalTime) * 100), 95);
+                            if (progressPercent > 0) {
+                              navActions.setLastProgressUpdate(Math.floor(currentTime));
+                              handleLessonProgressUpdate(navState.currentLesson.id, 30, progressPercent);
+                            }
+                          }
+                        }}
+                        onLoadedMetadata={(e) => navActions.setTotalTime(e.currentTarget.duration)}
+                      />
+                    )}
+                  </div>
+                ) : navState.currentLesson.content ? (
+                  <div className="flex items-center justify-center h-full text-white p-8">
+                    <div className="text-center max-w-2xl">
+                      <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-xl font-semibold mb-4">Text Content</h3>
+                      <div className="text-left bg-gray-800 p-6 rounded-lg">
+                        <p className="whitespace-pre-wrap">{navState.currentLesson.content}</p>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-white">
                     <div className="text-center">
                       <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                      <p>No video available for this lesson</p>
+                      <p>No content available for this lesson</p>
                     </div>
                   </div>
                 )}
@@ -422,13 +315,14 @@ export default function LearningPage({ params }: { params: { id: string } }) {
               {/* Video Controls */}
               <div className="p-4 border-t">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">{currentLesson.title}</h2>
+                  <h2 className="text-xl font-semibold">{navState.currentLesson.title}</h2>
                   <Button
-                    onClick={() => markLessonCompleted(currentLesson.id)}
-                    disabled={getLessonProgress(currentLesson.id)?.isCompleted}
-                    variant={getLessonProgress(currentLesson.id)?.isCompleted ? "secondary" : "default"}
+                    onClick={() => handleMarkLessonCompleted(navState.currentLesson.id)}
+                    disabled={learningActions.getLessonProgress(navState.currentLesson.documentId)?.isCompleted}
+                    variant={learningActions.getLessonProgress(navState.currentLesson.documentId)?.isCompleted ? "secondary" : "default"}
                   >
-                    {getLessonProgress(currentLesson.id)?.isCompleted ? (
+                  {console.log("heeeee console", learningActions.getLessonProgress(navState.currentLesson.documentId), navState)}
+                    {learningActions.getLessonProgress(navState?.currentLesson?.documentId)?.isCompleted ? (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Completed
@@ -443,7 +337,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                 </div>
                 
                 <p className="text-muted-foreground mb-4">
-                  {currentLesson.description}
+                  {navState.currentLesson.description}
                 </p>
                 
                 <div className="flex items-center justify-between">
@@ -451,8 +345,11 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={goToPreviousLesson}
-                      disabled={currentLessonIndex === 0}
+                      onClick={() => {
+                        console.log('⬅️ Previous button clicked, current index:', navState.currentLessonIndex);
+                        navActions.goToPreviousLesson();
+                      }}
+                      disabled={navState.currentLessonIndex === 0}
                     >
                       <SkipBack className="h-4 w-4 mr-2" />
                       Previous
@@ -460,8 +357,11 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={goToNextLesson}
-                      disabled={currentLessonIndex >= data.lessons.length - 1}
+                      onClick={() => {
+                        console.log('➡️ Next button clicked, current index:', navState.currentLessonIndex);
+                        navActions.goToNextLesson();
+                      }}
+                      disabled={navState.currentLessonIndex >= learningState.lessons.length - 1}
                     >
                       Next
                       <SkipForward className="h-4 w-4 ml-2" />
@@ -469,7 +369,10 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                   </div>
                   
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span><Clock className="h-4 w-4 inline mr-1" />{currentLesson.duration} min</span>
+                    <span>
+                      <Clock className="h-4 w-4 inline mr-1" />
+                      {navState.currentLesson.duration || 'N/A'} min
+                    </span>
                   </div>
                 </div>
               </div>
@@ -478,26 +381,26 @@ export default function LearningPage({ params }: { params: { id: string } }) {
 
           {/* Course Actions */}
           <div className="flex gap-4 mb-6">
-            <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+            <Dialog open={reviewState.showReviewDialog} onOpenChange={reviewActions.closeReviewDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" disabled={learningState.hasUserReviewed}>
                   <Star className="h-4 w-4 mr-2" />
-                  Leave Review
+                  {learningState.hasUserReviewed ? 'Review Submitted' : 'Leave Review'}
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent aria-describedby="review-dialog-description">
                 <DialogHeader>
                   <DialogTitle>Leave a Review</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div id="review-dialog-description" className="space-y-4">
                   <div>
                     <Label htmlFor="rating">Rating</Label>
                     <div className="flex gap-1 mt-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
-                          onClick={() => setReviewData({ ...reviewData, rating: star })}
-                          className={`p-1 ${star <= reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                          onClick={() => reviewActions.updateReviewData({ rating: star })}
+                          className={`p-1 ${star <= reviewState.reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
                         >
                           <Star className="h-5 w-5 fill-current" />
                         </button>
@@ -508,8 +411,8 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <Label htmlFor="title">Title</Label>
                     <Input
                       id="title"
-                      value={reviewData.title}
-                      onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
+                      value={reviewState.reviewData.title}
+                      onChange={(e) => reviewActions.updateReviewData({ title: e.target.value })}
                       placeholder="Review title"
                     />
                   </div>
@@ -517,13 +420,13 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <Label htmlFor="comment">Comment</Label>
                     <Textarea
                       id="comment"
-                      value={reviewData.comment}
-                      onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                      value={reviewState.reviewData.comment}
+                      onChange={(e) => reviewActions.updateReviewData({ comment: e.target.value })}
                       placeholder="Share your thoughts about this course..."
                       rows={4}
                     />
                   </div>
-                  <Button onClick={submitReview} className="w-full">
+                  <Button onClick={handleSubmitReview} className="w-full">
                     Submit Review
                   </Button>
                 </div>
@@ -544,17 +447,17 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Overall Progress</span>
-                    <span>{progressPercentage}%</span>
+                    <span>{learningState.overallProgress}%</span>
                   </div>
-                  <ProgressBar value={progressPercentage} />
+                  <ProgressBar value={learningState.overallProgress} />
                 </div>
                 
                 <div className="flex justify-between text-sm">
                   <span>Completed Lessons</span>
-                  <span>{completedLessons} / {data.lessons.length}</span>
+                  <span>{learningState.completedLessons} / {learningState.totalLessons}</span>
                 </div>
                 
-                {data.enrollment.isCompleted && (
+                {learningState.enrollment?.isCompleted && (
                   <Badge className="w-full justify-center bg-green-100 text-green-800">
                     <Award className="h-4 w-4 mr-2" />
                     Course Completed!
@@ -571,18 +474,18 @@ export default function LearningPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {data.lessons.map((lesson, index) => {
-                  const progress = getLessonProgress(lesson.id);
+                {console.log("learningState", learningState?.lessons)}
+                {learningState.lessons.map((lesson, index) => {
+                  const progress = learningActions.getLessonProgress(lesson.documentId);
                   const isCompleted = progress?.isCompleted || false;
-                  const isCurrent = currentLessonIndex === index;
+                  const isCurrent = navState.currentLessonIndex === index;
                   
                   return (
                     <button
                       key={lesson.id}
                       onClick={() => {
-                        setCurrentLessonIndex(index);
-                        setCurrentLesson(lesson);
-                        setCurrentTime(0);
+                        console.log('🖱️ Lesson clicked:', lesson.title, 'index:', index);
+                        navActions.setCurrentLesson(lesson, index);
                       }}
                       className={`w-full text-left p-3 border-b hover:bg-muted/50 transition-colors ${
                         isCurrent ? 'bg-primary/10 border-l-4 border-l-primary' : ''
@@ -598,7 +501,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                           <div>
                             <p className="font-medium text-sm">{lesson.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {lesson.duration} min
+                              {lesson.duration || 'N/A'} min
                             </p>
                           </div>
                         </div>
@@ -618,25 +521,25 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Certificate Dialog */}
-      <Dialog open={showCertificateDialog} onOpenChange={setShowCertificateDialog}>
-        <DialogContent>
+      <Dialog open={certState.showCertificateDialog} onOpenChange={certActions.closeCertificateDialog}>
+        <DialogContent aria-describedby="certificate-dialog-description">
           <DialogHeader>
             <DialogTitle>🎉 Certificate of Completion</DialogTitle>
           </DialogHeader>
-          <div className="text-center space-y-4">
-            {data.certificate ? (
+          <div id="certificate-dialog-description" className="text-center space-y-4">
+            {learningState.certificate ? (
               <>
                 <div className="bg-gradient-to-br from-purple-100 to-blue-100 p-6 rounded-lg">
                   <Award className="h-16 w-16 mx-auto mb-4 text-purple-600" />
                   <h3 className="text-xl font-bold mb-2">Certificate Generated!</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Certificate ID: {data.certificate.certificateId}
+                    Certificate ID: {learningState.certificate.certificateId}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Verification Code: {data.certificate.verificationCode}
+                    Verification Code: {learningState.certificate.verificationCode}
                   </p>
                 </div>
-                <Button className="w-full" onClick={() => window.print()}>
+                <Button className="w-full" onClick={certActions.downloadCertificate}>
                   <Download className="h-4 w-4 mr-2" />
                   Download Certificate
                 </Button>
@@ -650,7 +553,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     You&apos;ve successfully completed the course. Generate your certificate now!
                   </p>
                 </div>
-                <Button onClick={generateCertificate} className="w-full">
+                <Button onClick={handleGenerateCertificate} className="w-full">
                   <Award className="h-4 w-4 mr-2" />
                   Generate Certificate
                 </Button>

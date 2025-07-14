@@ -316,6 +316,18 @@ class StrapiAPI {
     console.log('🔧 Strapi API initialized with base URL:', this.baseURL);
   }
 
+  /**
+   * Helper method to format query strings for Strapi v5
+   * This ensures proper formatting of pagination, populate, and filters
+   */
+  private formatQueryString(queryParams: any): string {
+    return qs.stringify(queryParams, { 
+      encode: false,
+      arrayFormat: 'indices',
+      allowDots: false
+    });
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -509,15 +521,15 @@ class StrapiAPI {
     return response;
   }
 
-  // Role-based registration method using our custom API endpoint
+  // Role-based registration method using standard auth/local/register endpoint
   async registerWithRole(email: string, password: string, username: string, role: 'student' | 'instructor' | 'admin'): Promise<StrapiAuthResponse> {
-    const response = await this.request<StrapiAuthResponse>('/auth/register-with-role', {
+    // First, register the user with the standard endpoint
+    const response = await this.request<StrapiAuthResponse>('/auth/local/register', {
       method: 'POST',
       body: JSON.stringify({
         username,
         email,
         password,
-        role,
       }),
     });
 
@@ -525,6 +537,12 @@ class StrapiAPI {
     if (typeof window !== 'undefined') {
       localStorage.setItem('strapi-token', response.jwt);
     }
+
+    // Note: Role assignment would need to be handled separately
+    // The standard Strapi registration assigns the default authenticated role
+    console.log(`User registered with standard endpoint. Role '${role}' would need separate assignment.`);
+
+    return response;
 
     return response;
   }
@@ -624,10 +642,7 @@ class StrapiAPI {
         populate: populateArray
       };
       
-      const queryString = qs.stringify(queryParams, {
-        encodeValuesOnly: true, 
-        arrayFormat: 'brackets'
-      });
+      const queryString = this.formatQueryString(queryParams);
       
       console.log(`🔍 Getting course by ID: ${id} with query: ${queryString}`);
       
@@ -648,10 +663,7 @@ class StrapiAPI {
         populate: populateArray
       };
       
-      const queryString = qs.stringify(queryParams, {
-        encodeValuesOnly: true, 
-        arrayFormat: 'brackets'
-      });
+      const queryString = this.formatQueryString(queryParams);
       
       console.log(`🔍 Getting public course by ID: ${id} with query: ${queryString}`);
       
@@ -1018,11 +1030,7 @@ class StrapiAPI {
     queryParams.populate = ['student', 'course'];
 
     // Use qs.stringify for proper Strapi parameter encoding
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
 
     console.log('🔍 Enrollment query:', {
       queryParams,
@@ -1050,11 +1058,7 @@ class StrapiAPI {
         // Update populate as well
         alternativeQueryParams.populate = ['user', 'course'];
         
-        const alternativeQueryString = qs.stringify(alternativeQueryParams, { 
-          encode: false,
-          arrayFormat: 'brackets',
-          allowDots: true
-        });
+        const alternativeQueryString = this.formatQueryString(alternativeQueryParams);
         
         console.log('🔄 Trying alternative query:', alternativeQueryString);
         
@@ -1075,11 +1079,7 @@ class StrapiAPI {
             directQueryParams['filters[courseId][$eq]'] = params.courseId;
           }
           
-          const directQueryString = qs.stringify(directQueryParams, { 
-            encode: false,
-            arrayFormat: 'brackets',
-            allowDots: true
-          });
+          const directQueryString = this.formatQueryString(directQueryParams);
           
           console.log('🔄 Trying direct ID fields:', directQueryString);
           return await this.request<StrapiResponse<StrapiEnrollment[]>>(`/enrollments?${directQueryString}`);
@@ -1162,11 +1162,7 @@ class StrapiAPI {
       'populate': ['course.thumbnail', 'course.instructor.profile.avatar']
     };
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     console.log('🔍 Getting user enrollments with course details:', queryString);
     
@@ -1181,11 +1177,7 @@ class StrapiAPI {
         'populate': ['course.thumbnail', 'course.instructor.profile.avatar']
       };
       
-      const altQueryString = qs.stringify(altQueryParams, { 
-        encode: false,
-        arrayFormat: 'brackets',
-        allowDots: true
-      });
+      const altQueryString = this.formatQueryString(altQueryParams);
       
       return await this.request<StrapiResponse<StrapiEnrollment[]>>(`/enrollments?${altQueryString}`);
     }
@@ -1211,11 +1203,7 @@ class StrapiAPI {
 
     queryParams.populate = ['student', 'lesson', 'enrollment'];
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     return await this.request<StrapiResponse<StrapiLessonProgress[]>>(`/lesson-progresses?${queryString}`);
   }

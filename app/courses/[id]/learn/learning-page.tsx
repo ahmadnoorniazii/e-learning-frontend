@@ -106,8 +106,8 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       if (enrollment.isCompleted) {
         const certificates = await courseService.getMyCertificates();
         certificate = certificates.find(cert => 
-          cert.course.data.id.toString() === params.id &&
-          cert.student.data.id.toString() === user.id
+          ((cert.course as any)?.id || (cert.course as any)?.data?.id)?.toString() === params.id &&
+          ((cert.student as any)?.id || (cert.student as any)?.data?.id)?.toString() === user.id
         );
       }
 
@@ -115,7 +115,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       let lessonIndex = 0;
       const incompleteLessonIndex = lessons.findIndex(lesson => {
         const progress = lessonProgresses.find(p => 
-          p.lesson.data.id === lesson.id
+          ((p.lesson as any)?.id || (p.lesson as any)?.data?.id) === lesson.id
         );
         return !progress || !progress.isCompleted;
       });

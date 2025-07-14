@@ -245,26 +245,9 @@ export interface Certificate {
   isValid: boolean;
   createdAt: string;
   updatedAt: string;
-  course: {
-    data: {
-      id: number;
-      attributes: Course;
-    };
-  };
-  student: {
-    data: {
-      id: number;
-      attributes: {
-        username: string;
-        email: string;
-      };
-    };
-  };
-  enrollment: {
-    data: {
-      id: number;
-    };
-  };
+  course: Course;
+  student: User;
+  enrollment: Enrollment
 }
 
 // Category and Tag types
@@ -307,6 +290,18 @@ class ApiClient {
     }
     
     console.log('🔧 API Client initialized with base URL:', this.baseURL);
+  }
+
+  /**
+   * Helper method to format query strings for Strapi v5
+   * This ensures proper formatting of pagination, populate, and filters
+   */
+  private formatQueryString(queryParams: any): string {
+    return qs.stringify(queryParams, { 
+      encode: false,
+      arrayFormat: 'indices',
+      allowDots: false
+    });
   }
 
   private async makeRequest<T>(
@@ -410,15 +405,22 @@ class ApiClient {
     return response;
   }
 
-  async register(username: string, email: string, password: string): Promise<{ jwt: string; user: User }> {
+  async register(username: string, email: string, password: string, role?: 'student' | 'instructor'): Promise<{ jwt: string; user: User }> {
     // Use makeRequest directly to avoid sending Authorization header during registration
+    const payload: any = {
+      username,
+      email,
+      password,
+    };
+
+    // Add role to payload if provided
+    if (role) {
+      payload.role = role;
+    }
+
     const response = await this.makeRequest<{ jwt: string; user: User }>('/auth/local/register', {
       method: 'POST',
-      body: JSON.stringify({
-        username,
-        email,
-        password,
-      }),
+      body: JSON.stringify(payload),
     });
 
     this.token = response.jwt;
@@ -478,11 +480,7 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/user-profiles?${queryString}` : '/user-profiles';
     return await this.request<ApiResponse<UserProfile[]>>(url);
@@ -495,11 +493,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/user-profiles/${id}?${queryString}` : `/user-profiles/${id}`;
     return await this.request<ApiResponse<UserProfile>>(url);
@@ -590,11 +584,7 @@ class ApiClient {
     }
 
     // Use qs to serialize the entire query object
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
 
     return await this.request<ApiResponse<Course[]>>(`/courses?${queryString}`);
   }
@@ -612,11 +602,7 @@ class ApiClient {
       } else {
         // Handle object format using qs
         const queryParams = { populate };
-        const queryString = qs.stringify(queryParams, { 
-          encode: false,
-          arrayFormat: 'brackets',
-          allowDots: true
-        });
+        const queryString = this.formatQueryString(queryParams);
         url += `?${queryString}`;
       }
     }
@@ -638,11 +624,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     return await this.request<ApiResponse<Course[]>>(`/courses/search?${queryString}`);
   }
@@ -732,11 +714,7 @@ class ApiClient {
     }
 
     // Use qs to serialize with brackets format
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
 
     console.log('🔍 API: GET', `/enrollments?${queryString}`);
     return await this.request<ApiResponse<Enrollment[]>>(`/enrollments?${queryString}`);
@@ -749,11 +727,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/enrollments/${id}?${queryString}` : `/enrollments/${id}`;
     return await this.request<ApiResponse<Enrollment>>(url);
@@ -827,11 +801,7 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/lesson-progresses?${queryString}` : '/lesson-progresses';
     return await this.request<ApiResponse<LessonProgress[]>>(url);
@@ -844,11 +814,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/lesson-progresses/${id}?${queryString}` : `/lesson-progresses/${id}`;
     return await this.request<ApiResponse<LessonProgress>>(url);
@@ -865,11 +831,14 @@ class ApiClient {
     lastAccessedAt?: string;
   }): Promise<ApiResponse<LessonProgress>> {
     const progressData = {
-      ...data,
+      student: data.student,
+      lesson: data.lesson,
+      enrollment: data.enrollment,
       lastAccessedAt: data.lastAccessedAt || new Date().toISOString(),
       progressPercentage: data.progressPercentage || 0,
       timeSpent: data.timeSpent || 0,
-      isCompleted: data.isCompleted || false
+      isCompleted: data.isCompleted || false,
+      notes: data.notes || ''
     };
 
     return await this.request<ApiResponse<LessonProgress>>('/lesson-progresses', {
@@ -928,11 +897,7 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/course-reviews?${queryString}` : '/course-reviews';
     return await this.request<ApiResponse<CourseReview[]>>(url);
@@ -945,11 +910,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/course-reviews/${id}?${queryString}` : `/course-reviews/${id}`;
     return await this.request<ApiResponse<CourseReview>>(url);
@@ -1010,11 +971,7 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/certificates?${queryString}` : '/certificates';
     return await this.request<ApiResponse<Certificate[]>>(url);
@@ -1027,11 +984,7 @@ class ApiClient {
       queryParams.populate = populate;
     }
     
-    const queryString = qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    });
+    const queryString = this.formatQueryString(queryParams);
     
     const url = queryString ? `/certificates/${id}?${queryString}` : `/certificates/${id}`;
     return await this.request<ApiResponse<Certificate>>(url);
@@ -1103,18 +1056,14 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
 
-    const query = Object.keys(queryParams).length > 0 ? `?${qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    })}` : '';
+    const query = Object.keys(queryParams).length > 0 ? `?${this.formatQueryString(queryParams)}` : '';
     return await this.request<ApiResponse<CourseCategory[]>>(`/categories${query}`);
   }
 
   async getCategory(id: string, populate?: string | string[] | Record<string, any>): Promise<ApiResponse<CourseCategory>> {
     const queryParams: any = {};
     if (populate) queryParams.populate = populate;
-    const query = Object.keys(queryParams).length > 0 ? `?${qs.stringify(queryParams)}` : '';
+    const query = Object.keys(queryParams).length > 0 ? `?${this.formatQueryString(queryParams)}` : '';
     return await this.request<ApiResponse<CourseCategory>>(`/categories/${id}${query}`);
   }
 
@@ -1145,18 +1094,14 @@ class ApiClient {
       queryParams.filters = params.filters;
     }
 
-    const query = Object.keys(queryParams).length > 0 ? `?${qs.stringify(queryParams, { 
-      encode: false,
-      arrayFormat: 'brackets',
-      allowDots: true
-    })}` : '';
+    const query = Object.keys(queryParams).length > 0 ? `?${this.formatQueryString(queryParams)}` : '';
     return await this.request<ApiResponse<Tag[]>>(`/tags${query}`);
   }
 
   async getTag(id: string, populate?: string | string[] | Record<string, any>): Promise<ApiResponse<Tag>> {
     const queryParams: any = {};
     if (populate) queryParams.populate = populate;
-    const query = Object.keys(queryParams).length > 0 ? `?${qs.stringify(queryParams)}` : '';
+    const query = Object.keys(queryParams).length > 0 ? `?${this.formatQueryString(queryParams)}` : '';
     return await this.request<ApiResponse<Tag>>(`/tags/${id}${query}`);
   }
 
