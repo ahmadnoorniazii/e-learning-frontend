@@ -30,6 +30,9 @@ const transformCourse = (apiCourse: ApiCourse): any => {
     title: apiCourse.title,
     thumbnailUrl,
     avatarUrl,
+    enrollmentCount: apiCourse.enrollmentCount,
+    totalRatings: apiCourse.totalRatings,
+    rating: apiCourse.rating,
     rawThumbnail: apiCourse.thumbnail,
     rawAvatar: apiCourse.avatar
   });
@@ -92,6 +95,27 @@ export default function CoursesPage() {
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // Utility function to fetch enrollment counts
+  const fetchEnrollmentCounts = async (): Promise<Record<string, number>> => {
+    try {
+      const enrollmentsResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}/api/enrollments?pagination[pageSize]=1000&populate[0]=course`);
+      if (enrollmentsResponse.ok) {
+        const enrollmentsData = await enrollmentsResponse.json();
+        const counts: Record<string, number> = {};
+        enrollmentsData.data.forEach((enrollment: any) => {
+          const courseId = enrollment.course?.documentId || enrollment.course?.id?.toString();
+          if (courseId) {
+            counts[courseId] = (counts[courseId] || 0) + 1;
+          }
+        });
+        return counts;
+      }
+    } catch (err) {
+      console.warn('Could not fetch enrollment counts:', err);
+    }
+    return {};
+  };
+
   const fetchCourses = async () => {
     try {
       // Fetch courses with pagination (get more if needed)
@@ -101,7 +125,18 @@ export default function CoursesPage() {
       });
 
       if (response && response.data) {
-        const transformedCourses = response.data.map(transformCourse);
+        // Fetch enrollment counts for all courses
+        const enrollmentCounts = await fetchEnrollmentCounts();
+
+        // Enhance courses with actual enrollment counts
+        const coursesWithStats = response.data.map((course) => ({
+          ...course,
+          enrollmentCount: enrollmentCounts[course.documentId || course.id.toString()] || 0,
+          totalRatings: course.totalRatings || 0,
+          rating: course.rating || 0
+        }));
+
+        const transformedCourses = coursesWithStats.map(transformCourse);
         setAllCourses(transformedCourses);
         setTotalCourses(response.meta?.pagination?.total || transformedCourses.length);
       } else {
@@ -147,7 +182,18 @@ export default function CoursesPage() {
       const response = await courseService.searchCourses(query);
       
       if (response && response.data) {
-        const transformedCourses = response.data.map(transformCourse);
+        // Fetch enrollment counts for search results too
+        const enrollmentCounts = await fetchEnrollmentCounts();
+
+        // Enhance search results with enrollment counts
+        const coursesWithStats = response.data.map((course) => ({
+          ...course,
+          enrollmentCount: enrollmentCounts[course.documentId || course.id.toString()] || 0,
+          totalRatings: course.totalRatings || 0,
+          rating: course.rating || 0
+        }));
+
+        const transformedCourses = coursesWithStats.map(transformCourse);
         
         // Apply filters to search results
         let filteredResults = transformedCourses;
@@ -464,11 +510,11 @@ export default function CoursesPage() {
                             <div className="flex items-center space-x-1">
                               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                               <span className="font-medium">{course.rating ?? 0}</span>
-                              <span>({course.reviewsCount ?? 0})</span>
+                              <span>({course.totalRatings || course.reviewsCount ?? 0})</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Users className="h-4 w-4" />
-                              <span>{(course.studentsCount ?? 0).toLocaleString()}</span>
+                              <span>{(course.enrollmentCount || course.studentsCount ?? 0).toLocaleString()}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Clock className="h-4 w-4" />

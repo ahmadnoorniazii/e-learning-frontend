@@ -86,11 +86,12 @@ export function CourseCard({ course }: CourseCardProps) {
           <div className="flex items-center space-x-3 text-gray-600">
             <div className="flex items-center space-x-1">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-medium">{course.rating}</span>
+              <span className="font-medium">{course.rating || 0}</span>
+              <span className="text-xs">({course.totalRatings || course.reviewsCount || 0})</span>
             </div>
             <div className="flex items-center space-x-1">
               <Users className="h-4 w-4" />
-              <span>{course?.studentsCount?.toLocaleString()}</span>
+              <span>{(course.enrollmentCount || course.studentsCount || 0).toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -99,19 +100,19 @@ export function CourseCard({ course }: CourseCardProps) {
           <div className="flex items-center space-x-4 text-sm text-gray-600">
             <div className="flex items-center space-x-1">
               <Clock className="h-4 w-4" />
-              <span>{formatDuration(course.duration)}</span>
+              <span>{formatDuration(course.duration || 0)}</span>
             </div>
             <div className="flex items-center space-x-1">
               <BookOpen className="h-4 w-4" />
-              <span>{course.lessonsCount}</span>
+              <span>{course.lessonsCount || 0}</span>
             </div>
           </div>
           <div className="text-2xl font-bold text-blue-600">
-            ${course.price}
+            ${course.price || 0}
           </div>
         </div>
         
-        <Button asChild className="w-full mt-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 mt-auto">
+        <Button asChild className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 rounded-xl shadow-lg transform hover:scale-105 transition-all duration-300 mt-4">
           <Link href={`/courses/${course.id}`}>
             View Course
           </Link>
