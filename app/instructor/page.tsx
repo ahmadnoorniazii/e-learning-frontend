@@ -104,7 +104,7 @@ export default function InstructorDashboard() {
           </div>
         </div>
       </div>
-
+      {console.log('Instructor Dashboard Loaded', { courses, reviews })}
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {(coursesError || reviewsError) && (
           <Alert variant="destructive" className="mb-8">
@@ -167,15 +167,15 @@ export default function InstructorDashboard() {
                                 <Badge variant="secondary">{course.difficultyLevel || 'Beginner'}</Badge>
                                 <span className="flex items-center space-x-1">
                                   <Users className="h-4 w-4" />
-                                  <span>{course.enrollmentCount} students</span>
+                                  <span>{course.enrollmentCount || 0} students</span>
                                 </span>
                                 <span className="flex items-center space-x-1">
                                   <DollarSign className="h-4 w-4" />
-                                  <span>${course.revenue}</span>
+                                  <span>${course.revenue || 0}</span>
                                 </span>
                                 <span className="flex items-center space-x-1">
                                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span>{course.rating?.toFixed(1) || '0.0'}</span>
+                                  <span>{course.rating?.toFixed(1) || '0.0'} ({course.totalRatings || 0} reviews)</span>
                                 </span>
                               </div>
                             </div>

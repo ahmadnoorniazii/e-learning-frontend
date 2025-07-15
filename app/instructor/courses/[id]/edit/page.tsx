@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Course, Lesson } from '@/lib/api-client';
-import { Plus, Trash2, Save, CheckCircle, AlertCircle, Clock, Eye } from 'lucide-react';
+import { Plus, Trash2, Save, CheckCircle, AlertCircle, Clock, Eye, Upload, X } from 'lucide-react';
+import { courseService } from '@/lib/course-service';
 
 interface EnhancedLesson extends Lesson {
   status: 'draft' | 'saved' | 'error' | 'loading';
@@ -45,6 +46,8 @@ export default function EditCourse() {
     promoVideoUrl: '',
     category: undefined as number | undefined,
   });
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
 
   const fetchCourse = async () => {
     try {
@@ -77,6 +80,14 @@ export default function EditCourse() {
           promoVideoUrl: courseData.promoVideoUrl || '',
           category: courseData.category?.data?.id
         });
+
+        // Set existing thumbnail preview if available
+        if (courseData.thumbnail?.url) {
+          const thumbnailUrl = courseData.thumbnail.url.startsWith('http') 
+            ? courseData.thumbnail.url 
+            : `${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}${courseData.thumbnail.url}`;
+          setThumbnailPreview(thumbnailUrl);
+        }
 
         // Set lessons if they exist
         console.log('Course lessons data:', courseData.lessons);
@@ -143,6 +154,25 @@ export default function EditCourse() {
     }));
   };
 
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnailFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
+  };
+
   const getLessonStatusIcon = (status: EnhancedLesson['status']) => {
     switch (status) {
       case 'saved':
@@ -181,7 +211,7 @@ export default function EditCourse() {
       duration: 0,
       sortOrder: lessons.length + 1,
       lessonType: 'video',
-              course: course?.documentId || course?.id?.toString() || '',
+      course: course?.documentId || '',
       status: 'draft',
       hasChanges: true
     };
@@ -300,6 +330,22 @@ export default function EditCourse() {
         promoVideoUrl: formData.promoVideoUrl,
         ...(formData.category && { category: formData.category }),
       } as any;
+
+      // Handle thumbnail upload if a new file was selected
+      if (thumbnailFile) {
+        try {
+          const thumbnailUpload = await courseService.uploadCourseMedia(
+            thumbnailFile,
+            `${formData.title} thumbnail`,
+            'Course thumbnail image'
+          );
+          courseData.thumbnail = thumbnailUpload.id;
+        } catch (uploadError) {
+          console.error('Error uploading thumbnail:', uploadError);
+          setError('Failed to upload thumbnail. Please try again.');
+          return;
+        }
+      }
 
       await apiClient.updateCourse(course.documentId, courseData);
       setSuccess('Course updated successfully!');
@@ -498,6 +544,45 @@ export default function EditCourse() {
                     <SelectItem value="advanced">Advanced</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            {/* Thumbnail Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="thumbnail">Course Thumbnail</Label>
+              <div className="space-y-4">
+                {thumbnailPreview && (
+                  <div className="relative inline-block">
+                    <img
+                      src={thumbnailPreview}
+                      alt="Course thumbnail preview"
+                      className="w-48 h-32 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0"
+                      onClick={removeThumbnail}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="thumbnail"
+                    name="thumbnail"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailChange}
+                    className="flex-1"
+                  />
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Upload a course thumbnail image (JPG, PNG, WebP recommended)
+                </p>
               </div>
             </div>
 

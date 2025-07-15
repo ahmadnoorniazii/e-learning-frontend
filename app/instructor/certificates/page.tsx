@@ -105,10 +105,57 @@ export default function InstructorCertificates() {
 
   const downloadCertificate = (certificate: Certificate) => {
     if (certificate.certificateUrl) {
-      window.open(certificate.certificateUrl, '_blank');
+      // Download using the certificate URL
+      const link = document.createElement('a');
+      link.href = certificate.certificateUrl;
+      link.download = `certificate-${certificate.certificateId || certificate.id}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } else {
-      // Generate certificate URL or show message
-      alert('Certificate download not available yet');
+      // Generate a certificate download if URL is not available
+      try {
+        const certificateContent = `
+          <html>
+            <head>
+              <title>Certificate of Completion</title>
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; margin: 0; }
+                .certificate { border: 3px solid #2563eb; padding: 40px; max-width: 800px; margin: 0 auto; }
+                h1 { color: #2563eb; margin-bottom: 30px; }
+                .student-name { font-size: 2em; color: #1e40af; margin: 20px 0; }
+                .course-name { font-size: 1.5em; color: #3730a3; margin: 20px 0; }
+              </style>
+            </head>
+            <body>
+              <div class="certificate">
+                <h1>Certificate of Completion</h1>
+                <p>This certifies that</p>
+                <div class="student-name">${certificate.student?.data?.attributes?.username || 'Student'}</div>
+                <p>has successfully completed the course</p>
+                <div class="course-name">${certificate.course?.data?.attributes?.title || 'Course'}</div>
+                <p>Issued on: ${new Date(certificate.issuedDate || certificate.createdAt).toLocaleDateString()}</p>
+                <p>Certificate ID: ${certificate.certificateId || certificate.id}</p>
+                ${certificate.verificationCode ? `<p>Verification Code: ${certificate.verificationCode}</p>` : ''}
+              </div>
+            </body>
+          </html>
+        `;
+        
+        const blob = new Blob([certificateContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `certificate-${certificate.certificateId || certificate.id}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error generating certificate download:', error);
+        alert('Error downloading certificate. Please try again.');
+      }
     }
   };
 
