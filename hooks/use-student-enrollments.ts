@@ -15,6 +15,7 @@ export interface StudentEnrollment {
   paymentAmount: number;
   course: {
     id: number;
+    documentId: string;
     title: string;
     description: string;
     slug: string;
@@ -71,8 +72,8 @@ export function useStudentEnrollments(options: UseStudentEnrollmentsOptions = {}
   
   // Memoize the populate array to prevent unnecessary re-renders
   const populate = useMemo(() => 
-    options.populate || ['course', 'course.instructor', 'course.category', 'course.lessons'], 
-    [options.populate ? JSON.stringify(options.populate) : null]
+    options.populate || ['course', 'course.instructor', 'course.category', 'course.lessons', 'course.thumbnail', 'course.avatar'], 
+    [options.populate]
   );
 
   const fetchEnrollments = useCallback(async () => {
@@ -98,6 +99,19 @@ export function useStudentEnrollments(options: UseStudentEnrollmentsOptions = {}
         // Handle populated course data - when populated, course comes directly without .data wrapper
         const courseData = (enrollment.course as any)?.attributes || enrollment.course as any;
         
+        // Handle thumbnail data properly - it might be nested in .data.attributes
+        let thumbnailData = courseData?.thumbnail;
+        if (thumbnailData?.data) {
+          thumbnailData = thumbnailData.data.attributes || thumbnailData.data;
+        }
+        
+        console.log('🔍 Processing enrollment course:', {
+          courseTitle: courseData?.title,
+          hasThumbnail: !!courseData?.thumbnail,
+          thumbnailStructure: courseData?.thumbnail,
+          processedThumbnail: thumbnailData
+        });
+        
         return {
           id: enrollment.id,
           documentId: enrollment.documentId,
@@ -116,7 +130,7 @@ export function useStudentEnrollments(options: UseStudentEnrollmentsOptions = {}
             description: courseData?.description || '',
             slug: courseData?.slug || '',
             shortDescription: courseData?.shortDescription,
-            thumbnail: courseData?.thumbnail,
+            thumbnail: thumbnailData,
             price: courseData?.price || 0,
             difficultyLevel: courseData?.difficultyLevel,
             duration: courseData?.duration || 0,

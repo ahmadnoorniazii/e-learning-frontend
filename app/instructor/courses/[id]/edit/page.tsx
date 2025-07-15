@@ -348,8 +348,10 @@ export default function EditCourse() {
       }
 
       await apiClient.updateCourse(course.documentId, courseData);
+      console.log('✅ Course updated successfully with data:', courseData);
       setSuccess('Course updated successfully!');
       
+      // Wait a moment for the update to propagate, then redirect
       setTimeout(() => {
         router.push('/instructor/courses');
       }, 2000);

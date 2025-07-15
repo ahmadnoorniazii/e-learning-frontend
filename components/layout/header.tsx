@@ -114,20 +114,6 @@ export function Header() {
           )}
           
           {/* API Test Link - Only for development */}
-          {process.env.NODE_ENV === 'development' && (
-            <Link
-              href="/test-api"
-              className={`text-sm font-semibold transition-all duration-300 relative group ${
-                pathname === '/test-api'
-                  ? 'text-cyan-400'
-                  : 'text-gray-300 hover:text-cyan-300'
-              }`}
-            >
-              <TestTube className="h-4 w-4 inline mr-1" />
-              API Test
-              <span className={`absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-full ${pathname === '/test-api' ? 'w-full' : ''}`}></span>
-            </Link>
-          )}
         </nav>
 
         {/* Right Side */}
@@ -303,21 +289,6 @@ export function Header() {
                 >
                   {getDashboardLabel()}
                 </button>
-              )}
-
-              {process.env.NODE_ENV === 'development' && (
-                <Link
-                  href="/test-api"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-300 text-left ${
-                    pathname === '/test-api'
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg'
-                      : 'text-gray-300 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <TestTube className="h-4 w-4 inline mr-2" />
-                  API Test
-                </Link>
               )}
               
               {!isAuthenticated && (

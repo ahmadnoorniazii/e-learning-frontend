@@ -269,6 +269,12 @@ export function CourseContent({ course, courseReviews, numericCourseId, courseDo
                             </>
                           )}
                         </Button>
+                      ) : user?.role === 'instructor' ? (
+                        <div className="text-center py-4">
+                          <p className="text-white/80 text-sm">
+                            As an instructor, you have preview access to this course
+                          </p>
+                        </div>
                       ) : (
                         <Button 
                           onClick={handleEnroll}

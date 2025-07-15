@@ -40,6 +40,64 @@ export default function InstructorDashboard() {
     }
   }, [isAuthenticated, authLoading, user, router]);
 
+  // Helper function to get proper thumbnail URL
+  const getThumbnailUrl = (thumbnail: any) => {
+    console.log('🖼️ Processing instructor course thumbnail:', thumbnail);
+    
+    if (!thumbnail) {
+      console.log('⚠️ No thumbnail provided for instructor course');
+      return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400';
+    }
+    
+    const baseURL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    
+    // Check if it's a Strapi media object with formats (priority: medium > small > thumbnail)
+    if (thumbnail.formats) {
+      if (thumbnail.formats.medium) {
+        const url = `${baseURL}${thumbnail.formats.medium.url}`;
+        console.log('✅ Using medium format for instructor course:', url);
+        return url;
+      }
+      if (thumbnail.formats.small) {
+        const url = `${baseURL}${thumbnail.formats.small.url}`;
+        console.log('✅ Using small format for instructor course:', url);
+        return url;
+      }
+      if (thumbnail.formats.thumbnail) {
+        const url = `${baseURL}${thumbnail.formats.thumbnail.url}`;
+        console.log('✅ Using thumbnail format for instructor course:', url);
+        return url;
+      }
+    }
+    
+    // Check if it's a Strapi media object with direct url
+    if (thumbnail.url) {
+      const url = thumbnail.url.startsWith('http') 
+        ? thumbnail.url 
+        : `${baseURL}${thumbnail.url}`;
+      console.log('✅ Using direct URL for instructor course:', url);
+      return url;
+    }
+    
+    // Check if it's nested in data attribute (Strapi v4/v5 structure)
+    if (thumbnail.data && thumbnail.data.attributes) {
+      const attrs = thumbnail.data.attributes;
+      if (attrs.formats && attrs.formats.medium) {
+        const url = `${baseURL}${attrs.formats.medium.url}`;
+        console.log('✅ Using nested medium format for instructor course:', url);
+        return url;
+      }
+      if (attrs.url) {
+        const url = attrs.url.startsWith('http') ? attrs.url : `${baseURL}${attrs.url}`;
+        console.log('✅ Using nested direct URL for instructor course:', url);
+        return url;
+      }
+    }
+    
+    console.log('⚠️ Could not process instructor course thumbnail, using fallback');
+    return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400';
+  };
+
   const instructorStats = [
     {
       title: 'Total Courses',
@@ -150,7 +208,7 @@ export default function InstructorDashboard() {
                           <div className="flex items-start space-x-4">
                             <div className="w-20 h-20 relative rounded-lg overflow-hidden">
                               <Image
-                                src={course.thumbnail?.url || '/placeholder-course.jpg'}
+                                src={getThumbnailUrl(course.thumbnail)}
                                 alt={course.title}
                                 fill
                                 className="object-cover"

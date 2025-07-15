@@ -58,21 +58,120 @@ export default function StudentDashboard() {
     }
   }, [isAuthenticated, authLoading, user, router]);
 
+  // Certificate download function
+  const downloadCertificate = (cert: any) => {
+    if (cert.certificateUrl) {
+      // Download using the certificate URL
+      const link = document.createElement('a');
+      link.href = cert.certificateUrl;
+      link.download = `certificate-${cert.certificateId || cert.id}.pdf`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Generate a certificate download if URL is not available
+      try {
+        const certificateContent = `
+          <html>
+            <head>
+              <title>Certificate of Completion</title>
+              <style>
+                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; margin: 0; }
+                .certificate { border: 3px solid #2563eb; padding: 40px; max-width: 800px; margin: 0 auto; }
+                h1 { color: #2563eb; margin-bottom: 30px; }
+                .student-name { font-size: 2em; color: #1e40af; margin: 20px 0; }
+                .course-name { font-size: 1.5em; color: #3730a3; margin: 20px 0; }
+              </style>
+            </head>
+            <body>
+              <div class="certificate">
+                <h1>Certificate of Completion</h1>
+                <p>This certifies that</p>
+                <div class="student-name">${user?.username || 'Student'}</div>
+                <p>has successfully completed the course</p>
+                <div class="course-name">${cert.course?.title || 'Course'}</div>
+                <p>Issued on: ${new Date(cert.issuedDate || cert.createdAt).toLocaleDateString()}</p>
+                <p>Certificate ID: ${cert.certificateId || cert.id}</p>
+                ${cert.verificationCode ? `<p>Verification Code: ${cert.verificationCode}</p>` : ''}
+              </div>
+            </body>
+          </html>
+        `;
+        
+        const blob = new Blob([certificateContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `certificate-${cert.certificateId || cert.id}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error generating certificate download:', error);
+        alert('Error downloading certificate. Please try again.');
+      }
+    }
+  };
+
   // Helper function to get proper thumbnail URL
   const getThumbnailUrl = (thumbnail: any) => {
-    if (!thumbnail) return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800';
+    console.log('🖼️ Processing student dashboard thumbnail:', thumbnail);
     
-    // Check if it's a Strapi media object with formats
-    if (thumbnail.formats && thumbnail.formats.medium) {
-      return `${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}${thumbnail.formats.medium.url}`;
+    if (!thumbnail) {
+      console.log('⚠️ No thumbnail found for student dashboard course');
+      return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800';
+    }
+    
+    console.log('📸 Thumbnail object:', thumbnail);
+    
+    const baseURL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    
+    // Check if it's a Strapi media object with formats (priority: medium > small > thumbnail)
+    if (thumbnail.formats) {
+      if (thumbnail.formats.medium) {
+        const url = `${baseURL}${thumbnail.formats.medium.url}`;
+        console.log('✅ Using medium format for student course:', url);
+        return url;
+      }
+      if (thumbnail.formats.small) {
+        const url = `${baseURL}${thumbnail.formats.small.url}`;
+        console.log('✅ Using small format for student course:', url);
+        return url;
+      }
+      if (thumbnail.formats.thumbnail) {
+        const url = `${baseURL}${thumbnail.formats.thumbnail.url}`;
+        console.log('✅ Using thumbnail format for student course:', url);
+        return url;
+      }
     }
     
     // Check if it's a Strapi media object with direct url
     if (thumbnail.url) {
-      return `${process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'}${thumbnail.url}`;
+      const url = thumbnail.url.startsWith('http') 
+        ? thumbnail.url 
+        : `${baseURL}${thumbnail.url}`;
+      console.log('✅ Using direct URL for student course:', url);
+      return url;
     }
     
-    // Fallback to default image
+    // Check if it's nested in data attribute (Strapi v4/v5 structure)
+    if (thumbnail.data && thumbnail.data.attributes) {
+      const attrs = thumbnail.data.attributes;
+      if (attrs.formats && attrs.formats.medium) {
+        const url = `${baseURL}${attrs.formats.medium.url}`;
+        console.log('✅ Using nested medium format for student course:', url);
+        return url;
+      }
+      if (attrs.url) {
+        const url = attrs.url.startsWith('http') ? attrs.url : `${baseURL}${attrs.url}`;
+        console.log('✅ Using nested direct URL for student course:', url);
+        return url;
+      }
+    }
+    
+    console.log('⚠️ Could not process student course thumbnail, using fallback');
     return 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=800';
   };
 
@@ -182,7 +281,7 @@ export default function StudentDashboard() {
                               </div>
                             </div>
                             <Button asChild>
-                              <Link href={`/courses/${enrollment.course?.id}/learn`}>
+                              <Link href={`/courses/${enrollment.course?.documentId}/learn`}>
                                 <Play className="h-4 w-4 mr-2" />
                                 Continue
                               </Link>
@@ -232,7 +331,7 @@ export default function StudentDashboard() {
                                 Completed
                               </Badge>
                             <Button variant="outline" asChild>
-                                <Link href={`/courses/${enrollment.course.id}/learn`}>
+                                <Link href={`/courses/${enrollment.course.documentId}/learn`}>
                                   <BookOpen className="h-4 w-4 mr-2" />
                                   Review
                                 </Link>
@@ -336,10 +435,12 @@ export default function StudentDashboard() {
                           {new Date(cert.issuedDate).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" asChild>
-                        <a href={cert.certificateUrl || '#'} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-3 w-3" />
-                        </a>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => downloadCertificate(cert)}
+                      >
+                        <Download className="h-3 w-3" />
                       </Button>
                     </div>
                   ))}

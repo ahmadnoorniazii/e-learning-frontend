@@ -64,7 +64,7 @@ export function useStudentDashboard(): UseStudentDashboardReturn {
   const enrollmentsOptions = useMemo(() => ({
     userId: shouldFetch ? parseInt(user.id.toString()) : undefined,
     includeCompleted: true,
-    populate: ['course', 'course.instructor', 'course.category', 'course.lessons']
+    populate: ['course', 'course.instructor', 'course.category', 'course.lessons', 'course.thumbnail', 'course.avatar']
   }), [shouldFetch, user?.id]);
 
   const certificatesOptions = useMemo(() => ({

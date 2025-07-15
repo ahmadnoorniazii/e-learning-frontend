@@ -17,7 +17,6 @@ const PUBLIC_ROUTES = [
   '/instructors', // Public instructors listing and /instructors/[id]
   '/auth/login',
   '/auth/register',
-  '/test-api', // This covers /test-api/api-diagnostics and /test-api/debug-course
   '/test-auth',
   '/test-lesson-progress' // This covers /test-lesson-progress/[id]
 ];
