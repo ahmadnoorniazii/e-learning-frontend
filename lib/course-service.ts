@@ -247,6 +247,13 @@ class CourseService {
   async enrollInCourse(courseId: number, paymentAmount?: number): Promise<Enrollment> {
     try {
       console.log('🎯 Enrolling in course:', courseId);
+      
+      // // Check if user is already enrolled
+      // const existingEnrollment = await this.checkEnrollmentStatus(courseId.toString());
+      // if (existingEnrollment) {
+      //   throw new Error('You are already enrolled in this course');
+      // }
+      
       const response = await apiClient.enrollInCourse(courseId, 'completed', paymentAmount);
       const enrollment = response.data;
       
@@ -271,9 +278,19 @@ class CourseService {
       }
 
       return enrollment;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ CourseService: Error enrolling in course:', error);
-      throw new Error('Failed to enroll in course');
+      
+      // Provide specific error messages
+      if (error.message?.includes('already enrolled')) {
+        throw new Error('You are already enrolled in this course');
+      } else if (error.message?.includes('token') || error.message?.includes('unauthorized')) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (error.message?.includes('course not found')) {
+        throw new Error('This course is no longer available.');
+      }
+      
+      throw new Error('Failed to enroll in course. Please try again.');
     }
   }
 
@@ -300,8 +317,8 @@ class CourseService {
       
       const response = await apiClient.getEnrollments({
         filters: {
-          student: { id: { $eq: user.id } },
-          course: { id: { $eq: courseId } }
+          student: { documentId: { $eq: user.documentId } },
+          course: { documentId: { $eq: courseId } }
         },
         populate: {
           course: true,

@@ -42,7 +42,7 @@ export function CourseContent({ course, courseReviews, numericCourseId, courseDo
     if (!user) return;
     
     try {
-      const courseIdForAPI = numericCourseId || course.id;
+      const courseIdForAPI = courseDocumentId || course.id;
       console.log('🔍 Checking enrollment status:', {
         userId: user.id,
         courseId: course.id,
@@ -60,7 +60,7 @@ export function CourseContent({ course, courseReviews, numericCourseId, courseDo
     } catch (err) {
       console.error('Error checking enrollment:', err);
     }
-  }, [user, course.id, numericCourseId]);
+  }, [user, course.id, numericCourseId, courseDocumentId]);
 
   useEffect(() => {
     if (isAuthenticated && user) {

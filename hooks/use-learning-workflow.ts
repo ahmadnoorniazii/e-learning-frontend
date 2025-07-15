@@ -116,7 +116,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
 
       // 1.2: Check enrollment status
       console.log('🎫 Step 1.2: Checking enrollment status');
-      const enrollment = await courseService.checkEnrollmentStatus(course.id.toString());
+      const enrollment = await courseService.checkEnrollmentStatus(course.documentId.toString());
       if (!enrollment) {
         updateState({ error: 'Not enrolled in this course', loading: false });
         return false;
@@ -470,6 +470,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
 
   const refreshData = useCallback(async (): Promise<void> => {
     if (state.course) {
+      console.log("state.course", state.course)
       await initializeLearning(state.course.documentId || state.course.id.toString());
     }
   }, [state.course, initializeLearning]);
