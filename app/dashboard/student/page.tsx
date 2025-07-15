@@ -122,26 +122,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-        {/* Header */}
-      <div className="border-b bg-white">
-        <div className="container py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Welcome back, {user?.name}!</h1>
-              <p className="text-muted-foreground">Continue your learning journey</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button asChild>
-                <Link href="/courses">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Browse Courses
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container py-8">
         {error && (
           <Alert variant="destructive" className="mb-8">
@@ -202,7 +182,7 @@ export default function StudentDashboard() {
                               </div>
                             </div>
                             <Button asChild>
-                              <Link href={`/courses/${enrollment.course?.documentId}/learn`}>
+                              <Link href={`/courses/${enrollment.course?.id}/learn`}>
                                 <Play className="h-4 w-4 mr-2" />
                                 Continue
                               </Link>
@@ -251,12 +231,12 @@ export default function StudentDashboard() {
                                 <CheckCircle className="h-3 w-3 mr-1" />
                                 Completed
                               </Badge>
-                              <Button variant="outline" asChild>
+                            <Button variant="outline" asChild>
                                 <Link href={`/courses/${enrollment.course.id}/learn`}>
                                   <BookOpen className="h-4 w-4 mr-2" />
                                   Review
                                 </Link>
-                              </Button>
+                            </Button>
                             </div>
                           </div>
                         </CardContent>

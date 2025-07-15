@@ -72,7 +72,7 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
       
       // Check for enrollments using direct API call
       const enrollmentData = await makeAPICall(
-        `/enrollments?filters[student][id][$eq]=${user.id}&filters[course][id][$eq]=${courseIdForAPI}&populate=*`
+        `/enrollments?filters[student][documentId][$eq]=${user.documentId}&filters[course][documentId][$eq]=${courseIdForAPI}&populate=*`
       );
       
       console.log('📋 Enrollment response:', enrollmentData);

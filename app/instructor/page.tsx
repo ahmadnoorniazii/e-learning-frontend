@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -16,127 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatsCard } from '@/components/ui/stats-card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/use-auth';
-import { strapiAPI } from '@/lib/strapi';
-import { Course } from '@/lib/types';
-
-interface InstructorStats {
-  totalCourses: number;
-  totalStudents: number;
-  totalRevenue: number;
-  averageRating: number;
-}
-
-interface InstructorCourse extends Course {
-  enrollmentCount: number;
-  revenue: number;
-  lastUpdated: string;
-}
+import { useInstructorCourses } from '@/hooks/use-instructor-courses';
+import { useInstructorReviews } from '@/hooks/use-instructor-reviews';
 
 export default function InstructorDashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [courses, setCourses] = useState<InstructorCourse[]>([]);
-  const [stats, setStats] = useState<InstructorStats>({
-    totalCourses: 0,
-    totalStudents: 0,
-    totalRevenue: 0,
-    averageRating: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchInstructorData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!user) {
-        setError("User not authenticated");
-        setLoading(false);
-        return;
-      }
-
-      const coursesResponse = await strapiAPI.getCoursesByInstructor(user.id);
-
-      if (coursesResponse.data) {
-        console.log('courses', courses, coursesResponse.data, "please");   
-        const transformedCourses = coursesResponse.data.map(course => {
-          const attributes = course.attributes;
-          
-          // Handle description field
-          const description = typeof attributes.description === 'string' 
-            ? attributes.description 
-            : Array.isArray(attributes.description)
-              ? (attributes.description as any[]).map((item: any) => 
-                  Array.isArray(item.children) 
-                    ? item.children.map((child: any) => child.text || '').join('') 
-                    : ''
-                ).join('\n')
-              : '';
-          
-          // Calculate revenue based on price and students count
-          const price = attributes.price || 0;
-          const studentsCount = attributes.studentsCount || 0;
-          const revenue = price * studentsCount;
-          
-          return {
-            id: course.id.toString(),
-            title: attributes.title || '',
-            description: description,
-            instructor: {
-              id: attributes.instructor?.data?.id?.toString() || '1',
-              name: attributes.instructor?.data?.attributes?.username || 'Unknown Instructor',
-              email: attributes.instructor?.data?.attributes?.email || '',
-              role: 'instructor',
-              avatar: attributes.instructor?.data?.attributes?.profile?.avatar?.url,
-              createdAt: attributes.createdAt || new Date().toISOString()
-            },
-            thumbnail: attributes.thumbnail?.data?.attributes?.url,
-            price: price,
-            category: attributes.category || '',
-            level: attributes.level || '',
-            duration: attributes.duration || 0,
-            lessonsCount: attributes.lessons?.data?.length || 0,
-            studentsCount: studentsCount,
-            rating: attributes.rating || 0,
-            reviewsCount: attributes.reviewsCount || 0,
-            tags: attributes.tags || [],
-            createdAt: attributes.createdAt || new Date().toISOString(),
-            lessons: attributes.lessons?.data?.map((lesson: any) => ({
-              id: lesson.id.toString(),
-              title: lesson.attributes.title || '',
-              description: lesson.attributes.description || '',
-              duration: lesson.attributes.duration || 0,
-              order: lesson.attributes.order || 0,
-              videoUrl: lesson.attributes.videoUrl
-            })) || [],
-            // InstructorCourse specific fields
-            enrollmentCount: studentsCount,
-            revenue: revenue,
-            lastUpdated: attributes.updatedAt || attributes.createdAt || new Date().toISOString()
-          } as InstructorCourse;
-        });
-        
-        console.log('courses______', coursesResponse.data, "please", transformedCourses); 
-        setCourses(transformedCourses);
-        
-        // Safely calculate stats by handling possible undefined values
-        setStats({
-          totalCourses: transformedCourses.length,
-          totalStudents: transformedCourses.reduce((sum, course) => sum + (course.studentsCount || 0), 0),
-          totalRevenue: transformedCourses.reduce((sum, course) => sum + (course.revenue || 0), 0),
-          averageRating: transformedCourses.length > 0 
-            ? transformedCourses.reduce((sum, course) => sum + (course.rating || 0), 0) / transformedCourses.length 
-            : 0
-        });
-      }
-    } catch (err) {
-      console.error('Error fetching instructor data:', err);
-      setError('Failed to load instructor data. Please check your Strapi backend connection.');
-    } finally {
-      setLoading(false);
-    }
-  }, [user, courses]);
+  const { courses, loading: coursesLoading, error: coursesError, stats } = useInstructorCourses();
+  const { reviews, loading: reviewsLoading, error: reviewsError, stats: reviewStats } = useInstructorReviews();
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -149,12 +36,9 @@ export default function InstructorDashboard() {
         } else {
           router.push('/dashboard/student');
         }
-      } else {
-        fetchInstructorData();
       }
     }
-  }, [isAuthenticated, authLoading, user, router, fetchInstructorData]);
-console.log('courses',courses);
+  }, [isAuthenticated, authLoading, user, router]);
 
   const instructorStats = [
     {
@@ -187,7 +71,7 @@ console.log('courses',courses);
     }
   ];
 
-  if (authLoading || loading) {
+  if (authLoading || coursesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -222,9 +106,11 @@ console.log('courses',courses);
       </div>
 
       <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {error && (
+        {(coursesError || reviewsError) && (
           <Alert variant="destructive" className="mb-8">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {coursesError || reviewsError}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -264,7 +150,7 @@ console.log('courses',courses);
                           <div className="flex items-start space-x-4">
                             <div className="w-20 h-20 relative rounded-lg overflow-hidden">
                               <Image
-                                src={course.thumbnail || '/placeholder-course.jpg'}
+                                src={course.thumbnail?.url || '/placeholder-course.jpg'}
                                 alt={course.title}
                                 fill
                                 className="object-cover"
@@ -277,8 +163,8 @@ console.log('courses',courses);
                                 {course.description}
                               </p>
                               <div className="flex items-center space-x-4 text-sm">
-                                <Badge variant="outline">{course.category}</Badge>
-                                <Badge variant="secondary">{course.level}</Badge>
+                                <Badge variant="outline">{course.category?.data?.attributes?.name || 'Uncategorized'}</Badge>
+                                <Badge variant="secondary">{course.difficultyLevel || 'Beginner'}</Badge>
                                 <span className="flex items-center space-x-1">
                                   <Users className="h-4 w-4" />
                                   <span>{course.enrollmentCount} students</span>
@@ -289,19 +175,19 @@ console.log('courses',courses);
                                 </span>
                                 <span className="flex items-center space-x-1">
                                   <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span>{course?.rating}</span>
+                                  <span>{course.rating?.toFixed(1) || '0.0'}</span>
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Button variant="outline" size="sm" asChild>
-                                <Link href={`/courses/${course.id}`}>
+                                <Link href={`/courses/${course.documentId}`}>
                                   <Eye className="h-4 w-4 mr-1" />
                                   View Details
                                 </Link>
                               </Button>
                               <Button variant="outline" size="sm" asChild>
-                                <Link href={`/instructor/courses/${course.id}/edit`}>
+                                <Link href={`/instructor/courses/${course.documentId}/edit`}>
                                   <Edit className="h-4 w-4 mr-1" />
                                   Edit
                                 </Link>
@@ -344,14 +230,14 @@ console.log('courses',courses);
                           <div>
                             <h4 className="font-medium">{course.title}</h4>
                             <p className="text-sm text-muted-foreground">
-                              {course.enrollmentCount} students • {course.reviewsCount} reviews
+                              {course.enrollmentCount} students • {course.totalRatings || 0} reviews
                             </p>
                           </div>
                           <div className="text-right">
                             <div className="font-medium">${course.revenue}</div>
                             <div className="flex items-center space-x-1 text-sm">
                               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                              <span>{course.rating}</span>
+                              <span>{course.rating?.toFixed(1) || '0.0'}</span>
                             </div>
                           </div>
                         </div>
@@ -372,6 +258,41 @@ console.log('courses',courses);
                     <CardTitle>Recent Reviews</CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {reviews.length > 0 ? (
+                      <div className="space-y-4">
+                        {reviews.slice(0, 5).map((review) => (
+                          <div key={review.id} className="flex items-start space-x-3 p-4 border rounded-lg">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={review.student.avatar} />
+                              <AvatarFallback>
+                                {review.student.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className="font-medium">{review.student.name}</span>
+                                <div className="flex items-center space-x-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className={`h-3 w-3 ${
+                                        i < review.rating
+                                          ? 'fill-yellow-400 text-yellow-400'
+                                          : 'text-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-1">
+                                {review.course.title}
+                              </p>
+                              <p className="text-sm">{review.comment}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
                     <div className="text-center py-8">
                       <Star className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No reviews yet</h3>
@@ -379,6 +300,7 @@ console.log('courses',courses);
                         Reviews from your students will appear here
                       </p>
                     </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

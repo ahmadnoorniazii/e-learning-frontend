@@ -33,11 +33,11 @@ export default function InstructorLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-row">
       <InstructorSidebar />
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col">
         <InstructorHeader />
-        <main className="p-6">
+        <main className="flex-1 p-6">
           {children}
         </main>
       </div>

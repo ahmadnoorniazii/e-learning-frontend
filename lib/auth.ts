@@ -2,6 +2,7 @@ import { apiClient, User } from './api-client';
 
 export interface AuthUser {
   id: string;
+  documentId?: string;
   name: string;
   email: string;
   role: 'student' | 'instructor' | 'admin';
@@ -38,6 +39,7 @@ class AuthService {
       
       const user: AuthUser = {
         id: response.user.id.toString(),
+        documentId: response.user.documentId,
         name: this.getUserDisplayName(response.user),
         email: response.user.email,
         role: this.mapStrapiRoleToAppRole(response.user.role?.name || 'authenticated'),
@@ -69,6 +71,7 @@ class AuthService {
       
       const user: AuthUser = {
         id: response.user.id.toString(),
+        documentId: response.user.documentId,
         name: name || response.user.username || response.user.email,
         email: response.user.email,
         role: role, // Use the requested role
@@ -114,17 +117,66 @@ class AuthService {
     
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('auth-user');
-      if (stored) {
+      const token = localStorage.getItem('auth-token');
+      
+      if (stored && token) {
         try {
           this.currentUser = JSON.parse(stored);
           console.log('👤 AuthService: Restored user from storage:', this.currentUser?.role);
         } catch (error) {
           console.error('❌ AuthService: Error parsing stored user:', error);
           localStorage.removeItem('auth-user');
+          localStorage.removeItem('auth-token');
         }
       }
     }
     return this.currentUser;
+  }
+
+  async validateCurrentSession(): Promise<boolean> {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+
+    try {
+      // Validate the token by trying to refresh user data
+      const refreshedUser = await this.refreshCurrentUser();
+      return !!refreshedUser;
+    } catch (error) {
+      console.log('❌ AuthService: Session validation failed:', error);
+      this.logout();
+      return false;
+    }
+  }
+
+  async refreshCurrentUser(): Promise<AuthUser | null> {
+    try {
+      console.log('🔄 AuthService: Refreshing current user data');
+      const currentUserData = await apiClient.getCurrentUser();
+      
+      if (currentUserData) {
+        const refreshedUser: AuthUser = {
+          id: currentUserData.id.toString(),
+          documentId: currentUserData.documentId,
+          name: this.getUserDisplayName(currentUserData),
+          email: currentUserData.email,
+          role: this.mapStrapiRoleToAppRole(currentUserData.role?.name || 'authenticated'),
+          username: currentUserData.username,
+        };
+
+        this.currentUser = refreshedUser;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth-user', JSON.stringify(refreshedUser));
+        }
+        
+        console.log('✅ AuthService: User data refreshed:', refreshedUser);
+        return refreshedUser;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ AuthService: Failed to refresh user data:', error);
+      return null;
+    }
   }
 
   isAuthenticated(): boolean {

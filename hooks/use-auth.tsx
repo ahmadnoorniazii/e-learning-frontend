@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string, role?: 'student' | 'instructor') => Promise<AuthUser>;
   logout: () => void;
+  refreshUser: () => Promise<AuthUser | null>;
   loading: boolean;
 }
 
@@ -19,13 +20,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
-    
-    if (currentUser) {
-      console.log('🔄 AuthProvider: Restored user:', currentUser.role);
-    }
+    const initializeAuth = async () => {
+      try {
+        console.log('🔄 AuthProvider: Initializing auth...');
+        
+        // Check if we have a stored user and token
+        const storedUser = authService.getCurrentUser();
+        const token = localStorage.getItem('auth-token');
+        
+        if (storedUser && token) {
+          console.log('🔄 AuthProvider: Found stored user and token, validating...');
+          
+          try {
+            // Validate token by attempting to fetch current user from API
+            const refreshedUser = await authService.refreshCurrentUser();
+            if (refreshedUser) {
+              console.log('✅ AuthProvider: Token valid, user authenticated:', refreshedUser.role);
+              setUser(refreshedUser);
+            } else {
+              console.log('❌ AuthProvider: Token invalid, clearing auth state');
+              authService.logout();
+              setUser(null);
+            }
+          } catch (error) {
+            console.log('❌ AuthProvider: Token validation failed, clearing auth state:', error);
+            authService.logout();
+            setUser(null);
+          }
+        } else {
+          console.log('🔄 AuthProvider: No stored auth data found');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('❌ AuthProvider: Error during auth initialization:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
 
     // Listen for automatic logout events
     const handleAutoLogout = (event: Event) => {
@@ -68,6 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const refreshUser = async (): Promise<AuthUser | null> => {
+    try {
+      console.log('🔄 AuthProvider: Manual user refresh requested');
+      const refreshedUser = await authService.refreshCurrentUser();
+      setUser(refreshedUser);
+      console.log('✅ AuthProvider: User refreshed successfully:', refreshedUser?.role);
+      return refreshedUser;
+    } catch (error) {
+      console.error('❌ AuthProvider: Failed to refresh user:', error);
+      // Don't logout on refresh failure - the user might still be valid
+      return null;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -75,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      refreshUser,
       loading
     }}>
       {children}

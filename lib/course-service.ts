@@ -30,8 +30,18 @@ class CourseService {
   // Public course methods (no authentication required)
   async getPublicCourses(params: CourseSearchParams = {}): Promise<{ data: Course[]; meta?: any }> {
     try {
-      // Use array format for populate that should work with Strapi v4
-      const defaultPopulate = ['instructor', 'category', 'thumbnail', 'avatar', 'tags', 'lessons'];
+      // Use consistent object-based populate strategy
+      const defaultPopulate = {
+        instructor: true,
+        category: true,
+        thumbnail: true,
+        avatar: true,
+        tags: true,
+        lessons: {
+          sort: ['sortOrder:asc']
+        }
+      };
+      
       const response = await apiClient.getCourses({
         page: params.page || 1,
         pageSize: params.pageSize || 12,
@@ -50,12 +60,27 @@ class CourseService {
     try {
       console.log('🔍 CourseService.getCourseById called with ID:', id);
       
+      // Define consistent populate strategy for all course fetches - populate all fields
+      const defaultPopulate = {
+        instructor: true,
+        category: true,
+        thumbnail: true,
+        avatar: true,
+        enrollments: {
+          populate: 'lessonProgress'
+        },
+        tags: true,
+              lessons: {
+          sort: ['sortOrder:asc']
+        }
+      };
+      
       // First try to get the course directly with the provided ID
       let response;
       
       try {
         console.log('🔍 Attempting to fetch course directly with ID:', id);
-        response = await apiClient.getCourse(id);
+        response = await apiClient.getCourse(id, defaultPopulate);
         console.log('✅ Successfully got course data:', response.data);
       } catch (directError) {
         console.log('❌ Direct course fetch failed:', directError);
@@ -68,7 +93,8 @@ class CourseService {
           console.log('🔍 Searching by documentId...');
           const searchByDocId = await apiClient.getCourses({
             filters: { documentId: { $eq: id } },
-            pageSize: 1
+            pageSize: 1,
+            populate: defaultPopulate
           });
           
           if (searchByDocId.data.length > 0) {
@@ -83,7 +109,7 @@ class CourseService {
         if (!response && !isNaN(parseInt(id))) {
           try {
             console.log('🔍 Trying as numeric ID...');
-            const numericResponse = await apiClient.getCourse(parseInt(id).toString());
+            const numericResponse = await apiClient.getCourse(parseInt(id).toString(), defaultPopulate);
             response = numericResponse;
             console.log('✅ Found course by numeric ID:', response.data);
           } catch (numericError) {
@@ -108,7 +134,7 @@ class CourseService {
           throw new Error(`Course not found with ID: ${id}. Check the course ID in the URL.`);
         }
       }
-
+      console.log('🔍 Response:', response.data.enrollments);
       // Now try to get lessons for this course
       const courseData = response.data;
       console.log('🔍 Getting lessons for course:', { id: courseData.id, documentId: courseData.documentId });
@@ -120,12 +146,12 @@ class CourseService {
         // Method 1: Try with course numeric ID
         try {
           console.log('🔍 Fetching lessons with course numeric ID:', courseData.id);
-          lessonsResponse = await apiClient.request<any>(`/lessons?filters[course][id]=${courseData.id}&sort=sortOrder:asc`);
+          lessonsResponse = await apiClient.request<any>(`/lessons?filters[course][documentId][$eq]=${courseData.documentId}&sort=sortOrder:asc`);
           console.log('📚 Lessons response (numeric ID):', lessonsResponse);
         } catch (numericLessonError) {
           console.log('❌ Lessons fetch with numeric ID failed:', numericLessonError);
         }
-        
+
         // Method 2: Try with course documentId if numeric failed
         if (!lessonsResponse?.data || lessonsResponse.data.length === 0) {
           try {
@@ -149,7 +175,7 @@ class CourseService {
         console.error('❌ Error fetching lessons:', lessonError);
         (courseData as any).lessons = [];
       }
-
+      courseData.enrollments = response?.data?.enrollments ?? []
       return courseData;
       
     } catch (error) {
@@ -276,6 +302,11 @@ class CourseService {
         filters: {
           student: { id: { $eq: user.id } },
           course: { id: { $eq: courseId } }
+        },
+        populate: {
+          course: true,
+          student: true,
+          lessonProgress: true
         }
       });
       
@@ -379,7 +410,11 @@ class CourseService {
  
       const response = await apiClient.getLessonProgress({
         filters,
-        populate: ['lesson', 'enrollment'],
+        populate: {
+          lesson: true,
+          enrollment: true,
+          student: true
+        },
         pageSize: 100
       });
 
@@ -670,27 +705,27 @@ class CourseService {
       const verificationCode = `VER-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
       
       // Get the enrollment to extract the numeric ID
-      let numericEnrollmentId: number;
+      // let numericEnrollmentId: number;
       
-      // Try to parse as number first
-      const parsedId = parseInt(enrollmentId);
-      if (!isNaN(parsedId)) {
-        numericEnrollmentId = parsedId;
-      } else {
-        // If it's not a number, it's likely a documentId, so fetch the enrollment
-        console.log('🔍 EnrollmentId appears to be documentId, fetching enrollment data...');
-        const enrollment = await apiClient.getEnrollment(enrollmentId);
-        if (!enrollment.data || !enrollment.data.id) {
-          throw new Error('Could not get numeric enrollment ID for certificate generation');
-        }
-        numericEnrollmentId = enrollment.data.id;
-        console.log('✅ Got numeric enrollment ID:', numericEnrollmentId);
-      }
+      // // Try to parse as number first
+      // const parsedId = parseInt(enrollmentId);
+      // if (!isNaN(parsedId)) {
+      //   numericEnrollmentId = parsedId;
+      // } else {
+      //   // If it's not a number, it's likely a documentId, so fetch the enrollment
+      //   console.log('🔍 EnrollmentId appears to be documentId, fetching enrollment data...');
+      //   const enrollment = await apiClient.getEnrollment(enrollmentId);
+      //   if (!enrollment.data || !enrollment.data.id) {
+      //     throw new Error('Could not get numeric enrollment ID for certificate generation');
+      //   }
+      //   numericEnrollmentId = enrollment.data.id;
+      //   console.log('✅ Got numeric enrollment ID:', numericEnrollmentId);
+      // }
       
       const certificateData = {
         student: user.id,
-        course: parseInt(courseId),
-        enrollment: numericEnrollmentId,
+        course: courseId,
+        enrollment: enrollmentId,
         certificateId,
         verificationCode,
         issuedDate: new Date().toISOString(),
@@ -1010,14 +1045,14 @@ class CourseService {
         try {
           console.log('🔄 Starting updateCourseProgress for enrollment:', enrollmentId);
           
-          // Get the enrollment to find the course
-          const enrollment = await apiClient.getEnrollment(enrollmentId, ['course']);
+          // Get the enrollment with populated course and lessonProgress data
+          const enrollment = await apiClient.getEnrollment(enrollmentId, ['course', 'lessonProgress']);
           console.log('📋 Raw enrollment data:', enrollment);
           
           if (!enrollment.data) {
             throw new Error('Enrollment not found');
           }
-
+          
           // Handle different possible course data structures
           let courseId: number | null = null;
           
@@ -1035,13 +1070,13 @@ class CourseService {
           }
 
           console.log('🎯 Extracted course ID:', courseId);
-          
+
           if (!courseId) {
             console.error('❌ Course ID structure:', JSON.stringify(enrollment.data.course, null, 2));
             throw new Error('Course not found in enrollment');
           }
 
-          // Get course with lessons
+          // Get course with lessons to determine total lesson count
           const course = await this.getCourseById(courseId.toString());
           console.log('📚 Course data fetched:', { 
             id: course.id, 
@@ -1050,6 +1085,7 @@ class CourseService {
             lessonsIsArray: Array.isArray(course.lessons),
             lessonsData: course.lessons
           });
+          
           // Handle both normalized and non-normalized lesson data
           let totalLessons = 0;
           if (course.lessons) {
@@ -1067,12 +1103,20 @@ class CourseService {
             return enrollment.data;
           }
 
-          // Get all lesson progress for this enrollment
-          const lessonsArray = Array.isArray(course.lessons) ? course.lessons : (course.lessons as any)?.data || [];
-          const firstLessonDocumentId = lessonsArray[0]?.documentId;
-          const lessonProgresses = await this.getLessonProgressForCourse(enrollmentId, firstLessonDocumentId);
-          const completedLessons = lessonProgresses.filter(p => p.isCompleted).length;
+          // Use the lessonProgress data that's already populated in the enrollment
+          const lessonProgresses = enrollment.data.lessonProgress || [];
+          console.log('📋 Using lessonProgress from enrollment data:', {
+            count: lessonProgresses.length,
+            progressData: lessonProgresses.map((p: any) => ({
+              id: p.id,
+              isCompleted: p.isCompleted,
+              progressPercentage: p.progressPercentage,
+              lessonId: p.lesson?.id
+            }))
+          });
 
+          const completedLessons = lessonProgresses.filter((p: any) => p.isCompleted).length;
+          
           console.log('📊 Progress calculation:', { 
             completedLessons, 
             totalLessons, 
@@ -1082,11 +1126,9 @@ class CourseService {
           const overallProgress = Math.round((completedLessons / totalLessons) * 100);
           
           if (overallProgress >= 100) {
-
             // Mark course as completed
             return await this.markCourseCompleted(enrollmentId);
           } else {
-
             // Update progress
             return await this.updateEnrollmentProgress(enrollmentId, overallProgress);
           }

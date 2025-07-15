@@ -705,8 +705,8 @@ class StrapiAPI {
     if (params.page) searchParams.append('pagination[page]', params.page.toString());
     if (params.pageSize) searchParams.append('pagination[pageSize]', params.pageSize.toString());
 
-    // Updated filtering format
-    searchParams.append('filters[instructor]', instructorId.toString());
+    // Updated filtering format - use documentId for instructor filtering
+    searchParams.append('filters[instructor][documentId][$eq]', instructorId.toString());
     searchParams.append('populate', 'thumbnail,instructor.profile.avatar,lessons');
 
     return await this.request<StrapiResponse<StrapiCourse[]>>(`/courses?${searchParams.toString()}`);
@@ -774,10 +774,10 @@ class StrapiAPI {
     if (params.pageSize) searchParams.append('pagination[pageSize]', params.pageSize.toString());
     
     if (params.courseId) {
-      searchParams.append('filters[course][id][$eq]', params.courseId);
+      searchParams.append('filters[course][documentId][$eq]', params.courseId);
     }
     if (params.userId) {
-      searchParams.append('filters[user][id][$eq]', params.userId);
+      searchParams.append('filters[user][documentId][$eq]', params.userId);
     }
 
     searchParams.append('populate', 'user.profile.avatar,course');

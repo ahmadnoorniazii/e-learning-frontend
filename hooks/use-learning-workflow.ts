@@ -30,6 +30,7 @@ export interface LearningWorkflowState {
 export interface LearningWorkflowActions {
   // Step 1: Initialize the learning environment
   initializeLearning: (courseId: string) => Promise<boolean>;
+  setCourseData: (course: Course) => void;
   
   // Step 2: Progress tracking
   trackLessonProgress: (lessonId: number, timeSpent?: number, progressPercentage?: number) => Promise<LessonProgress | null>;
@@ -51,7 +52,7 @@ export interface LearningWorkflowActions {
 }
 
 export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowActions] {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   
   const [state, setState] = useState<LearningWorkflowState>({
     course: null,
@@ -87,9 +88,22 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       return false;
     }
 
+    // Ensure user has documentId - refresh if missing
+    let currentUser = user;
+    if (!currentUser.documentId) {
+      console.log('🔄 User missing documentId, refreshing user data...');
+      const refreshedUser = await refreshUser();
+      if (!refreshedUser || !refreshedUser.documentId) {
+        updateState({ error: 'Unable to get user document ID' });
+        return false;
+      }
+      currentUser = refreshedUser;
+    }
+
     try {
       updateState({ loading: true, error: null });
       console.log('🎯 STEP 1: Initializing learning environment for course:', courseId);
+      console.log('👤 Current user:', { id: currentUser.id, documentId: currentUser.documentId });
 
       // 1.1: Get course details
       console.log('📚 Step 1.1: Fetching course details');
@@ -107,7 +121,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
         updateState({ error: 'Not enrolled in this course', loading: false });
         return false;
       }
-      console.log('✅ Enrollment verified:', { id: enrollment.id, progress: enrollment.progress });
+      console.log('✅ Enrollment verified:', { enrollment, id: enrollment.id, progress: enrollment.progress });
 
       // 1.3: Extract lessons
       console.log('📝 Step 1.3: Processing lessons');
@@ -123,10 +137,11 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
 
       // 1.4: Get existing lesson progress
       console.log('📊 Step 1.4: Fetching lesson progress');
-      const existingProgress = await courseService.getLessonProgressForCourse(enrollment.documentId.toString());
+      const existingProgressRes = await courseService.getLessonProgressForCourse(enrollment.documentId.toString(), lessons?.[0]?.id?.toString());
+      const existingProgress: LessonProgress[] = (enrollment as any)?.lessonProgress ?? existingProgressRes;
       console.log('✅ Existing progress fetched:', existingProgress.map(p => ({
         id: p.id,
-        lessonId: p.lesson?.id,
+        lessonId: (p.lesson as any)?.id || (p.lesson as any)?.data?.id,
         isCompleted: p.isCompleted,
         progressPercentage: p.progressPercentage
       })));
@@ -137,7 +152,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       console.log("existingProgress", existingProgress)
       // Map existing progress
       existingProgress.forEach(progress => {
-        const lessonId = progress.lesson?.id;
+        const lessonId = (progress.lesson as any)?.id || (progress.lesson as any)?.data?.id;
         if (lessonId) {
           progressMap.set(lessonId, progress);
         }
@@ -168,18 +183,21 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       console.log('⭐ Step 1.6: Fetching reviews and certificate');
       const reviewsResponse = await courseService.getCourseReviews(course.id.toString());
       const reviews = reviewsResponse.data;
-      
+      console.log("reviews..", reviews, user)
       const userReview = reviews.find(review => {
-        const reviewStudentId = review.student?.id;
-        return reviewStudentId?.toString() === user.id.toString();
+        const reviewStudentId = (review.student as any)?.id;
+        const reviewStudentDocumentId = (review.student as any)?.documentId;
+        return reviewStudentId?.toString() === user?.id?.toString() || 
+               reviewStudentDocumentId?.toString() === user?.documentId?.toString();
       });
 
       let certificate: Certificate | null = null;
       if (enrollment.isCompleted) {
         const certificates = await courseService.getMyCertificates();
+
         certificate = certificates.find(cert => 
           cert?.course?.documentId?.toString() === courseId &&
-          cert?.student?.id?.toString() === user?.id
+          ((cert?.student as any)?.id?.toString() === user?.id || (cert?.student as any)?.documentId?.toString() === user?.documentId)
         ) || null;
       }
 
@@ -211,7 +229,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       });
       return false;
     }
-  }, [user, updateState, calculateProgress]);
+  }, [user, refreshUser, updateState, calculateProgress]);
 
   // Step 2: Track Lesson Progress
   const trackLessonProgress = useCallback(async (
@@ -220,6 +238,14 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
     progressPercentage: number = 0
   ): Promise<LessonProgress | null> => {
     if (!state.enrollment || !user) return null;
+
+    // Ensure user has documentId
+    let currentUser = user;
+    if (!currentUser.documentId) {
+      const refreshedUser = await refreshUser();
+      if (!refreshedUser) return null;
+      currentUser = refreshedUser;
+    }
 
     try {
       console.log('📈 STEP 2: Tracking lesson progress', { lessonId, timeSpent, progressPercentage });
@@ -266,7 +292,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       updateState({ error: 'Failed to update lesson progress' });
       return null;
     }
-  }, [state.enrollment, state.lessons, state.lessonProgresses, user, updateState, calculateProgress]);
+  }, [state.enrollment, state.lessons, state.lessonProgresses, user, refreshUser, updateState, calculateProgress]);
 
   // Step 2b: Mark Lesson as Completed
   const markLessonCompleted = useCallback(async (lessonId: number): Promise<boolean> => {
@@ -293,16 +319,17 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
     try {
       console.log('🎯 STEP 3: Updating course progress');
       const workflow = await courseService.completeWorkflow();
+      debugger;
       const updatedEnrollment = await workflow.updateCourseProgress(state.enrollment.documentId.toString());
       updateState({ enrollment: updatedEnrollment });
       console.log('✅ STEP 3 COMPLETE: Course progress updated', {
         progress: updatedEnrollment.progress,
         isCompleted: updatedEnrollment.isCompleted
       });
-
       return updatedEnrollment;
 
     } catch (error) {
+      debugger;
       console.error('❌ STEP 3 FAILED:', error);
       updateState({ error: 'Failed to update course progress' });
       return null;
@@ -347,8 +374,8 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
       
       const workflow = await courseService.completeWorkflow();
       const certificate = await workflow.generateCertificate(
-        state.enrollment.id.toString(),
-        state.course.id.toString()
+        state.enrollment.documentId.toString(),
+        state.course.documentId.toString()
       );
 
       updateState({ certificate });
@@ -366,41 +393,61 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
   // Utility Functions
   const getLessonProgress = useCallback((lessonId: number): LessonProgress | null => {
     console.log("🔍 Getting lesson progress for lessonId:", lessonId);
-    console.log("📊 Available lesson progresses:", state.lessonProgresses, state.lessonProgresses.map(p => ({
-      id: p.id,
-      lessonId: (p.lesson as any)?.id,
-      lessonDocumentId: (p.lesson as any)?.documentId,
-      isCompleted: p.isCompleted
-    })));
+    console.log("📊 Available lesson progresses:", state.lessonProgresses.length);
     
-    return state.lessonProgresses.find(p => {
-      // Try multiple ways to match the lesson ID
-      const lessonData = p.lesson as any;
+    // Helper function to check if a progress record matches the lesson
+    const isMatchingLesson = (p: LessonProgress) => {
+      const lessonData = p.lesson?.data ?? p.lesson as any;
       
       // Method 1: Direct ID comparison (numeric)
-      if (lessonData?.data?.documentId && lessonData?.data?.documentId === lessonId) {
-        console.log("comnes here")
+      if (lessonData?.id === lessonId) {
         return true;
       }
       
-      // Method 2: DocumentId comparison (convert to numbers if possible)
-      if (lessonData?.documentId) {
-        const docIdAsNumber = parseInt(lessonData.documentId);
+      // Method 2: DocumentId comparison 
+      if ((lessonData as any)?.documentId || (lessonData?.attributes as any)?.documentId) {
+        const docId = (lessonData as any)?.documentId || (lessonData?.attributes as any)?.documentId;
+        const docIdAsNumber = parseInt(docId);
         if (!isNaN(docIdAsNumber) && docIdAsNumber === lessonId) {
           return true;
         }
-        if (lessonData.documentId === lessonId.toString()) {
+        if (docId === lessonId.toString()) {
           return true;
         }
       }
       
-      // Method 3: Data wrapper (Strapi v4 format)
-      if (lessonData?.data?.id && lessonData.data.id === lessonId) {
-        return true;
-      }
-      
       return false;
-    }) || null;
+    };
+    
+    // Find all progress records for this lesson
+    const matchingProgresses = state.lessonProgresses.filter(isMatchingLesson);
+    
+    console.log("📊 Matching progresses for lesson", lessonId, ":", matchingProgresses.map(p => ({
+      id: p.id,
+      progressPercentage: p.progressPercentage,
+      isCompleted: p.isCompleted
+    })));
+    
+    if (matchingProgresses.length === 0) {
+      console.log("❌ No progress found for lesson", lessonId);
+      return null;
+    }
+    
+    // Strategy: First try to find completed progress (100%), otherwise get the highest progress
+    const completedProgress = matchingProgresses.find(p => p.progressPercentage === 100 || p.isCompleted);
+    
+    if (completedProgress) {
+      console.log("✅ Found completed progress for lesson", lessonId, ":", completedProgress.progressPercentage + "%");
+      return completedProgress;
+    }
+    
+    // If no completed progress, return the one with highest progress percentage
+    const highestProgress = matchingProgresses.reduce((highest, current) => 
+      (current.progressPercentage || 0) > (highest.progressPercentage || 0) ? current : highest
+    );
+    
+    console.log("📈 Found highest progress for lesson", lessonId, ":", highestProgress.progressPercentage + "%");
+    return highestProgress;
   }, [state.lessonProgresses]);
 
   const findCurrentLessonIndex = useCallback((): number => {
@@ -408,7 +455,7 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
     console.log('📚 Available lessons:', state.lessons.map(l => ({ id: l.id, title: l.title })));
     
     const incompleteIndex = state.lessons.findIndex(lesson => {
-      const progress = getLessonProgress(lesson.documentId);
+      const progress = getLessonProgress(lesson.id);
       console.log(`📖 Lesson ${lesson.id} (${lesson.title}):`, {
         hasProgress: !!progress,
         isCompleted: progress?.isCompleted || false
@@ -427,8 +474,28 @@ export function useLearningWorkflow(): [LearningWorkflowState, LearningWorkflowA
     }
   }, [state.course, initializeLearning]);
 
+  const setCourseData = useCallback((course: Course) => {
+    console.log('📚 Setting course data for unauthenticated user:', course.title);
+    
+    // Extract lessons from course data
+    const lessons: Lesson[] = Array.isArray(course.lessons) 
+      ? course.lessons 
+      : (course.lessons as any)?.data || [];
+    
+    updateState({
+      course,
+      lessons,
+      loading: false,
+      error: null,
+      totalLessons: lessons.length,
+      completedLessons: 0,
+      overallProgress: 0
+    });
+  }, [updateState]);
+
   const actions: LearningWorkflowActions = {
     initializeLearning,
+    setCourseData,
     trackLessonProgress,
     markLessonCompleted,
     updateCourseProgress,

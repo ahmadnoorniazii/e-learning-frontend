@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { 
@@ -26,9 +26,10 @@ interface CourseContentProps {
   course: Course;
   courseReviews: Review[];
   numericCourseId?: string; // Strapi numeric ID for API calls
+  courseDocumentId: string;
 }
 
-export function CourseContent({ course, courseReviews, numericCourseId }: CourseContentProps) {
+export function CourseContent({ course, courseReviews, numericCourseId, courseDocumentId }: CourseContentProps) {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -82,9 +83,9 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
       // Use the new learning workflow
       const workflow = await courseService.completeWorkflow();
       debugger;
-      const courseIdForAPI = course?.id?.toString();
-      const enrollmentData = await workflow.enrollInCourse(courseIdForAPI, course.price);
-      
+      const courseIdForAPI = courseDocumentId || course?.id;
+      const enrollmentData = await workflow.enrollInCourse(courseIdForAPI as any, course.price);
+
       setEnrollment(enrollmentData);
       
       toast({
@@ -121,12 +122,27 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
 
   const isEnrolled = !!enrollment;
   const progressPercentage = enrollment?.progress || 0;
+  
+  // Calculate completed lessons from enrollment lesson progress
+  const completedLessonsCount = useMemo(() => {
+    if (!enrollment || !enrollment.lessonProgress) return 0;
+    return enrollment.lessonProgress.filter((lesson: any) => lesson.isCompleted === true).length;
+  }, [enrollment]);
+
+  // Check if all lessons are completed
+  const isAllLessonsCompleted = useMemo(() => {
+    return isEnrolled && completedLessonsCount > 0 && completedLessonsCount === course.lessons.length;
+  }, [isEnrolled, completedLessonsCount, course.lessons.length]);
 
   // Debug enrollment status
   console.log('🔍 Enrollment Status Debug:', {
     enrollment,
     isEnrolled,
     progressPercentage,
+    completedLessonsCount,
+    totalLessons: course.lessons.length,
+    isAllLessonsCompleted,
+    lessonProgressData: enrollment?.lessonProgress,
     user: user?.id,
     course: course.id
   });
@@ -176,12 +192,26 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">Your Progress</span>
-                      <span className="text-sm">{progressPercentage}% complete</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{progressPercentage}% complete</span>
+                        {isAllLessonsCompleted && (
+                          <Badge className="bg-green-500 text-white">
+                            ✓ Completed
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <ProgressBar value={progressPercentage} className="bg-white/20" />
-                    <p className="text-sm text-blue-200 mt-2">
-                      0 of {course.lessons.length} lessons completed
-                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-sm text-blue-200">
+                        {completedLessonsCount} of {course.lessons.length} lessons completed
+                      </p>
+                      {isAllLessonsCompleted && (
+                        <span className="text-sm text-green-300 font-medium">
+                          🎉 All Done!
+                        </span>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -224,11 +254,20 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
                       {isEnrolled ? (
                         <Button 
                           onClick={handleStartLearning}
-                          className="w-full bg-white text-blue-600 hover:bg-white/90"
+                          className={`w-full ${isAllLessonsCompleted ? 'bg-green-500 hover:bg-green-600' : 'bg-white hover:bg-white/90'} ${isAllLessonsCompleted ? 'text-white' : 'text-blue-600'}`}
                           size="lg"
                         >
-                          <Play className="h-4 w-4 mr-2" />
-                          Continue Learning
+                          {isAllLessonsCompleted ? (
+                            <>
+                              <Award className="h-4 w-4 mr-2" />
+                              Course Completed!
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-4 w-4 mr-2" />
+                              Continue Learning
+                            </>
+                          )}
                         </Button>
                       ) : (
                         <Button 
@@ -384,9 +423,21 @@ export function CourseContent({ course, courseReviews, numericCourseId }: Course
           <TabsContent value="curriculum" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Course Curriculum</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Course Curriculum</span>
+                  {isAllLessonsCompleted && (
+                    <Badge className="bg-green-500 text-white">
+                      ✓ All Lessons Completed
+                    </Badge>
+                  )}
+                </CardTitle>
                 <p className="text-muted-foreground">
                   {course.lessonsCount} lessons • {course.duration} minutes total
+                  {isEnrolled && (
+                    <span className="ml-2 text-green-600 font-medium">
+                      • {completedLessonsCount} completed
+                    </span>
+                  )}
                 </p>
               </CardHeader>
               <CardContent className="p-0">

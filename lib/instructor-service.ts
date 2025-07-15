@@ -299,8 +299,8 @@ class InstructorService {
     try {
       const searchParams = new URLSearchParams();
       
-      // Filter courses by instructor user ID
-      searchParams.append('filters[instructor][id][$eq]', userId.toString());
+      // Filter courses by instructor document ID
+      searchParams.append('filters[instructor][documentId][$eq]', userId.toString());
       
       // Populate related data
       searchParams.append('populate[0]', 'thumbnail');
@@ -348,7 +348,7 @@ class InstructorService {
       const searchParams = new URLSearchParams();
       
       // Filter reviews by instructor's courses
-      searchParams.append('filters[course][instructor][id][$eq]', userId.toString());
+      searchParams.append('filters[course][instructor][documentId][$eq]', userId.toString());
       
       // Populate related data using indexed syntax
       searchParams.append('populate[0]', 'student');

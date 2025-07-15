@@ -10,7 +10,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
     
     // Get course details using the new API client
     const courseResponse = await courseService.getCourseById(params.id);
-    console.log('📦 Raw course response:', courseResponse);
+    console.log('📦 Raw course response here:', courseResponse.enrollments?.[0]?.lessonProgress);
     console.log('📋 Course response summary:', {
       id: courseResponse.id,
       documentId: courseResponse.documentId,
@@ -51,6 +51,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
     // Transform the course data to match the expected format using the normalizer
     const course: Course = normalizeCourseData(courseResponse as any, baseURL);
     console.log("course response hereeee", course)
+    
     // Fetch course reviews
     const reviewsResponse = await courseService.getCourseReviews(params.id, { pageSize: 20 });
     
@@ -64,6 +65,7 @@ export default async function CoursePage({ params }: { params: { id: string } })
         course={course}
         courseReviews={courseReviews}
         numericCourseId={courseResponse.id.toString()}
+        courseDocumentId={courseResponse.documentId.toString()}
       />
     );
   } catch (error) {

@@ -19,8 +19,8 @@ import { useAuth } from '@/hooks/use-auth';
 const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Courses', href: '/courses' },
+  { name: 'Instructors', href: '/instructors' },
   { name: 'About', href: '/about' },
-  {name: 'Instructors', href: '/instructors'},
 ];
 
 const mockNotifications = [

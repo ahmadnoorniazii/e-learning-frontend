@@ -28,6 +28,7 @@ interface ApiError {
 // User types based on API documentation
 export interface User {
   id: number;
+  documentId?: string;
   username: string;
   email: string;
   confirmed: boolean;
@@ -304,6 +305,44 @@ class ApiClient {
     });
   }
 
+  private formatPopulateForStrapiV5(populate: string | string[] | Record<string, any> | undefined): any {
+    if (!populate) return undefined;
+    
+    // If it's a string, convert to array
+    if (typeof populate === 'string') {
+      return populate.split(',').map(item => item.trim());
+    }
+    
+    // If it's already an array, return as is
+    if (Array.isArray(populate)) {
+      return populate;
+    }
+    
+    // If it's an object, convert to Strapi v5 format
+    if (typeof populate === 'object') {
+      const formattedPopulate: any = {};
+      
+      for (const [key, value] of Object.entries(populate)) {
+        if (typeof value === 'boolean') {
+          // Simple boolean populate
+          formattedPopulate[key] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          // Nested populate
+          formattedPopulate[key] = {
+            populate: this.formatPopulateForStrapiV5(value)
+          };
+        } else if (typeof value === 'string') {
+          // String populate (like "deep")
+          formattedPopulate[key] = value;
+        }
+      }
+      
+      return formattedPopulate;
+    }
+    
+    return populate;
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -397,6 +436,9 @@ class ApiClient {
       }),
     });
 
+    console.log('🔍 Login API response:', response);
+    console.log('👤 User data from login:', response.user);
+
     this.token = response.jwt;
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth-token', response.jwt);
@@ -423,6 +465,9 @@ class ApiClient {
       body: JSON.stringify(payload),
     });
 
+    console.log('🔍 Register API response:', response);
+    console.log('👤 User data from register:', response.user);
+
     this.token = response.jwt;
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth-token', response.jwt);
@@ -436,7 +481,28 @@ class ApiClient {
       throw new Error('No authentication token available');
     }
 
-    return await this.request<User>('/users/me?populate=role');
+    try {
+      // Request all fields including documentId
+      return await this.request<User>('/users/me?populate=role&fields=id,documentId,username,email,confirmed,blocked,createdAt,updatedAt');
+    } catch (error) {
+      // If getCurrentUser fails, it's likely due to an invalid token
+      console.error('❌ API: getCurrentUser failed, token may be invalid:', error);
+      throw error;
+    }
+  }
+
+  async validateToken(): Promise<boolean> {
+    if (!this.token) {
+      return false;
+    }
+
+    try {
+      await this.getCurrentUser();
+      return true;
+    } catch (error) {
+      console.log('❌ API: Token validation failed:', error);
+      return false;
+    }
   }
 
   logout(): void {
@@ -585,27 +651,20 @@ class ApiClient {
 
     // Use qs to serialize the entire query object
     const queryString = this.formatQueryString(queryParams);
-
+    debugger;
+    console.log("log request here", `/courses?${queryString}`)
     return await this.request<ApiResponse<Course[]>>(`/courses?${queryString}`);
   }
 
   async getCourse(id: string, populate?: string | string[] | Record<string, any>): Promise<ApiResponse<Course>> {
-    let url = `/courses/${id}`;
+    const queryParams: any = {};
     
     if (populate !== undefined) {
-      if (typeof populate === 'string') {
-        url += `?populate=${populate}`;
-      } else if (Array.isArray(populate)) {
-        // Handle array format: populate[0]=instructor&populate[1]=category
-        const populateParams = populate.map((field, index) => `populate[${index}]=${field}`).join('&');
-        url += `?${populateParams}`;
-      } else {
-        // Handle object format using qs
-        const queryParams = { populate };
-        const queryString = this.formatQueryString(queryParams);
-        url += `?${queryString}`;
-      }
+      queryParams.populate = populate;
     }
+    
+    const queryString = this.formatQueryString(queryParams);
+    const url = queryString ? `/courses/${id}?${queryString}` : `/courses/${id}`;
     
     console.log('🔍 API: GET', url);
     return await this.request<ApiResponse<Course>>(url);
@@ -671,6 +730,96 @@ class ApiClient {
     });
   }
 
+  // Lesson methods
+  async getLessons(params?: {
+    page?: number;
+    pageSize?: number;
+    populate?: string | string[] | Record<string, any>;
+    filters?: Record<string, any>;
+  }): Promise<ApiResponse<Lesson[]>> {
+    const queryParams: any = {};
+    
+    // Add pagination
+    if (params?.page) {
+      queryParams.pagination = { page: params.page };
+    }
+    if (params?.pageSize) {
+      if (!queryParams.pagination) queryParams.pagination = {};
+      queryParams.pagination.pageSize = params.pageSize;
+    }
+    
+    // Add populate
+    if (params?.populate !== undefined) {
+      queryParams.populate = params.populate;
+    }
+    
+    // Handle filters
+    if (params?.filters) {
+      for (const [entity, entityFilters] of Object.entries(params.filters)) {
+        if (typeof entityFilters === 'object' && entityFilters !== null) {
+          for (const [field, fieldFilter] of Object.entries(entityFilters)) {
+            if (typeof fieldFilter === 'object' && fieldFilter !== null && '$eq' in fieldFilter) {
+              queryParams[`filters[${entity}][${field}]`] = [fieldFilter.$eq];
+            } else {
+              queryParams[`filters[${entity}][${field}]`] = Array.isArray(fieldFilter) ? fieldFilter : [fieldFilter];
+            }
+          }
+        }
+      }
+    }
+
+    const queryString = this.formatQueryString(queryParams);
+    const url = queryString ? `/lessons?${queryString}` : '/lessons';
+    
+    console.log('🔍 API: GET', url);
+    return await this.request<ApiResponse<Lesson[]>>(url);
+  }
+
+  async getLesson(id: string, populate?: string | string[] | Record<string, any>): Promise<ApiResponse<Lesson>> {
+    const queryParams: any = {};
+    
+    if (populate !== undefined) {
+      queryParams.populate = populate;
+    }
+    
+    const queryString = this.formatQueryString(queryParams);
+    const url = queryString ? `/lessons/${id}?${queryString}` : `/lessons/${id}`;
+    
+    console.log('🔍 API: GET', url);
+    return await this.request<ApiResponse<Lesson>>(url);
+  }
+
+  async createLesson(lessonData: {
+    title: string;
+    description?: string;
+    content?: string;
+    videoUrl?: string;
+    duration: number;
+    sortOrder?: number;
+    isPreview?: boolean;
+    lessonType?: 'video' | 'reading' | 'assignment' | 'quiz';
+    course: string;
+  }): Promise<ApiResponse<Lesson>> {
+    console.log('📝 Creating lesson:', JSON.stringify(lessonData, null, 2));
+    return await this.request<ApiResponse<Lesson>>('/lessons', {
+      method: 'POST',
+      body: JSON.stringify({ data: lessonData }),
+    });
+  }
+
+  async updateLesson(id: string, lessonData: Partial<Lesson>): Promise<ApiResponse<Lesson>> {
+    return await this.request<ApiResponse<Lesson>>(`/lessons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ data: lessonData }),
+    });
+  }
+
+  async deleteLesson(id: string): Promise<void> {
+    await this.makeRequest(`/lessons/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Enrollment methods
   async getEnrollments(params?: {
     page?: number;
@@ -689,9 +838,9 @@ class ApiClient {
       queryParams.pagination.pageSize = params.pageSize;
     }
     
-    // Add populate
+    // Add populate with Strapi v5 formatting
     if (params?.populate !== undefined) {
-      queryParams.populate = params.populate;
+      queryParams.populate = this.formatPopulateForStrapiV5(params.populate);
     }
     
     // Handle filters - convert nested format to Strapi v5 format
@@ -924,10 +1073,19 @@ class ApiClient {
     comment: string;
     isPublic?: boolean;
   }): Promise<ApiResponse<CourseReview>> {
+    // Format data for Strapi v5 using connect syntax for relations
     const reviewData = {
-      ...data,
+      rating: data.rating,
+      title: data.title,
+      comment: data.comment,
       isPublic: data.isPublic !== false, // Default to true
-      helpfulCount: 0
+      helpfulCount: 0,
+      student: {
+        connect: [data.student]
+      },
+      course: {
+        connect: [data.course]
+      }
     };
 
     return await this.request<ApiResponse<CourseReview>>('/course-reviews', {
@@ -1000,9 +1158,22 @@ class ApiClient {
     certificateUrl?: string;
     isValid?: boolean;
   }): Promise<ApiResponse<Certificate>> {
+    // Format data for Strapi v5 using connect syntax for relations
     const certificateData = {
-      ...data,
-      isValid: data.isValid !== false // Default to true
+      certificateId: data.certificateId,
+      verificationCode: data.verificationCode,
+      issuedDate: data.issuedDate,
+      certificateUrl: data.certificateUrl,
+      isValid: data.isValid !== false, // Default to true
+      student: {
+        connect: [data.student]
+      },
+      course: {
+        connect: [data.course]
+      },
+      enrollment: {
+        connect: [data.enrollment]
+      }
     };
 
     return await this.request<ApiResponse<Certificate>>('/certificates', {

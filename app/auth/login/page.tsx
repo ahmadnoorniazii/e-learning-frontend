@@ -39,24 +39,43 @@ export default function LoginPage() {
 
     try {
       const user = await login(email, password);
-      console.log('🎯 Login successful, redirecting based on what:', user.role);
-      console.log('🎯 Login unsuccessful, redirecting based on role:',user, user.role);
+      console.log('🎯 Login successful, user role:', user.role);
       
-      // Role-based routing
+      // Small delay to ensure state updates are processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Role-based routing with window.location as fallback
+      let redirectUrl = '/dashboard/student'; // default
+      
       switch (user.role) {
         case 'admin':
           console.log('🔄 Redirecting to admin dashboard');
-          router.push('/admin');
+          redirectUrl = '/admin';
           break;
         case 'instructor':
           console.log('🔄 Redirecting to instructor dashboard');
-          router.push('/instructor');
+          redirectUrl = '/instructor';
           break;
         case 'student':
         default:
           console.log('🔄 Redirecting to student dashboard');
-          router.push('/dashboard/student');
+          redirectUrl = '/dashboard/student';
           break;
+      }
+      
+      // Try router.push first, then fallback to window.location
+      try {
+        router.push(redirectUrl);
+        // If router.push doesn't work after a short delay, force redirect
+        setTimeout(() => {
+          if (window.location.pathname === '/auth/login') {
+            console.log('🔄 Router.push failed, using window.location');
+            window.location.href = redirectUrl;
+          }
+        }, 1000);
+      } catch (routerError) {
+        console.log('🔄 Router.push failed, using window.location immediately');
+        window.location.href = redirectUrl;
       }
     } catch (err) {
       console.error('❌ Login error:', err);

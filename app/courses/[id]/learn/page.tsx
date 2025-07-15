@@ -22,9 +22,10 @@ import { useLearningWorkflow } from '@/hooks/use-learning-workflow';
 import { useLessonNavigation } from '@/hooks/use-lesson-navigation';
 import { useReviewDialog } from '@/hooks/use-review-dialog';
 import { useCertificateDialog } from '@/hooks/use-certificate-dialog';
+import courseService from '@/lib/course-service';
 
 export default function LearningPage({ params }: { params: { id: string } }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -45,12 +46,22 @@ export default function LearningPage({ params }: { params: { id: string } }) {
 
   // Initialize learning environment
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-      return;
-    }
-    
     const initializeAsync = async () => {
+      if (!isAuthenticated) {
+        // For unauthenticated users, just load course data without enrollment check
+        try {
+          const course = await courseService.getCourseById(params.id);
+          if (course) {
+            // Set basic course data for viewing
+            learningActions.setCourseData(course);
+          }
+        } catch (error) {
+          console.error('Error loading course:', error);
+        }
+        return;
+      }
+      
+      // For authenticated users, initialize full learning workflow
       const success = await learningActions.initializeLearning(params.id);
       if (!success && learningState.error === 'Not enrolled in this course') {
         router.push(`/courses/${params.id}`);
@@ -67,7 +78,6 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       const currentIndex = learningActions.findCurrentLessonIndex();
       const currentLesson = learningState.lessons[currentIndex];
       if (currentLesson) {
-        console.log('🎯 Auto-setting initial lesson:', currentLesson.title, 'at index:', currentIndex);
         navActions.setCurrentLesson(currentLesson, currentIndex);
       }
     }
@@ -178,7 +188,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (learningState.error) {
+  if (learningState.error && isAuthenticated) {
     return (
       <div className="container py-16 text-center">
         <Alert className="max-w-md mx-auto">
@@ -188,10 +198,74 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (!learningState.course || !navState.currentLesson) {
+  if (!learningState.course) {
     return (
       <div className="container py-16 text-center">
-        <p>No course data available</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>Loading course...</p>
+      </div>
+    );
+  }
+
+  // For unauthenticated users, show course preview
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="border-b bg-card">
+          <div className="container flex items-center justify-between py-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/courses/${params.id}`)}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Course
+              </Button>
+              <div>
+                <h1 className="text-lg font-semibold">{learningState.course.title}</h1>
+                <p className="text-sm text-muted-foreground">Course Preview</p>
+              </div>
+            </div>
+            
+            <Button
+              onClick={() => router.push('/auth/login')}
+              className="bg-primary"
+            >
+              Enroll to Learn
+            </Button>
+          </div>
+        </div>
+
+        <div className="container py-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Course Preview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                You need to be logged in and enrolled in this course to access the learning content.
+              </p>
+              <div className="flex gap-4">
+                <Button onClick={() => router.push('/auth/login')}>
+                  Login to Enroll
+                </Button>
+                <Button variant="outline" onClick={() => router.push(`/courses/${params.id}`)}>
+                  View Course Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!navState.currentLesson) {
+    return (
+      <div className="container py-16 text-center">
+        <p>No lesson data available</p>
       </div>
     );
   }
@@ -231,7 +305,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{learningState.overallProgress}% Complete</p>
-              <ProgressBar value={learningState.overallProgress} className="w-32" />
+              <ProgressBar value={Number(learningState.overallProgress) || 0} className="w-32" />
             </div>
             
             {learningState.enrollment?.isCompleted && (
@@ -253,9 +327,8 @@ export default function LearningPage({ params }: { params: { id: string } }) {
           {/* Video Player */}
           <Card className="mb-6">
             <CardContent className="p-0">
-              <div key={`lesson-${navState.currentLesson.id}`} className="aspect-video bg-black rounded-lg relative">
-                {console.log('🎬 Rendering lesson content for:', navState.currentLesson.title, 'ID:', navState.currentLesson.id)}
-                {navState.currentLesson.videoUrl ? (
+              <div key={`lesson-${navState.currentLesson?.id ?? 'unknown'}`} className="aspect-video bg-black rounded-lg relative">
+                {navState.currentLesson?.videoUrl ? (
                   <div className="w-full h-full">
                     {navState.currentLesson.videoUrl.includes('youtube.com') || navState.currentLesson.videoUrl.includes('youtu.be') ? (
                       // Handle YouTube URLs
@@ -284,7 +357,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                             const progressPercent = Math.min(Math.round((currentTime / navState.totalTime) * 100), 95);
                             if (progressPercent > 0) {
                               navActions.setLastProgressUpdate(Math.floor(currentTime));
-                              handleLessonProgressUpdate(navState.currentLesson.id, 30, progressPercent);
+                              handleLessonProgressUpdate(navState.currentLesson?.id ?? 0, 30, progressPercent);
                             }
                           }
                         }}
@@ -292,7 +365,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                       />
                     )}
                   </div>
-                ) : navState.currentLesson.content ? (
+                ) : navState.currentLesson?.content ? (
                   <div className="flex items-center justify-center h-full text-white p-8">
                     <div className="text-center max-w-2xl">
                       <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
@@ -315,14 +388,14 @@ export default function LearningPage({ params }: { params: { id: string } }) {
               {/* Video Controls */}
               <div className="p-4 border-t">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">{navState.currentLesson.title}</h2>
+                  <h2 className="text-xl font-semibold">{navState.currentLesson?.title ?? ''}</h2>
                   <Button
-                    onClick={() => handleMarkLessonCompleted(navState.currentLesson.id)}
-                    disabled={learningActions.getLessonProgress(navState.currentLesson.documentId)?.isCompleted}
-                    variant={learningActions.getLessonProgress(navState.currentLesson.documentId)?.isCompleted ? "secondary" : "default"}
+                    onClick={() => navState.currentLesson && handleMarkLessonCompleted(Number(navState.currentLesson.id) || 0)}
+                    disabled={navState.currentLesson ? learningActions.getLessonProgress(navState.currentLesson.documentId || 0)?.isCompleted : true}
+                    variant={navState.currentLesson && learningActions.getLessonProgress(navState.currentLesson.documentId || 0)?.isCompleted ? "secondary" : "default"}
                   >
-                  {console.log("heeeee console", learningActions.getLessonProgress(navState.currentLesson.documentId), navState)}
-                    {learningActions.getLessonProgress(navState?.currentLesson?.documentId)?.isCompleted ? (
+                   { console.log("resullllllt", navState.currentLesson && learningActions.getLessonProgress(navState?.currentLesson?.documentId || 0), navState?.currentLesson?.documentId)}
+                    {navState.currentLesson && learningActions.getLessonProgress(navState?.currentLesson?.documentId || 0)?.isCompleted ? (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Completed
@@ -337,7 +410,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                 </div>
                 
                 <p className="text-muted-foreground mb-4">
-                  {navState.currentLesson.description}
+                  {navState.currentLesson?.description ?? ''}
                 </p>
                 
                 <div className="flex items-center justify-between">
@@ -346,7 +419,6 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        console.log('⬅️ Previous button clicked, current index:', navState.currentLessonIndex);
                         navActions.goToPreviousLesson();
                       }}
                       disabled={navState.currentLessonIndex === 0}
@@ -358,7 +430,6 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        console.log('➡️ Next button clicked, current index:', navState.currentLessonIndex);
                         navActions.goToNextLesson();
                       }}
                       disabled={navState.currentLessonIndex >= learningState.lessons.length - 1}
@@ -371,7 +442,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>
                       <Clock className="h-4 w-4 inline mr-1" />
-                      {navState.currentLesson.duration || 'N/A'} min
+                      {Number(navState.currentLesson?.duration) || 'N/A'} min
                     </span>
                   </div>
                 </div>
@@ -381,57 +452,75 @@ export default function LearningPage({ params }: { params: { id: string } }) {
 
           {/* Course Actions */}
           <div className="flex gap-4 mb-6">
-            <Dialog open={reviewState.showReviewDialog} onOpenChange={reviewActions.closeReviewDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" disabled={learningState.hasUserReviewed}>
-                  <Star className="h-4 w-4 mr-2" />
-                  {learningState.hasUserReviewed ? 'Review Submitted' : 'Leave Review'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent aria-describedby="review-dialog-description">
-                <DialogHeader>
-                  <DialogTitle>Leave a Review</DialogTitle>
-                </DialogHeader>
-                <div id="review-dialog-description" className="space-y-4">
-                  <div>
-                    <Label htmlFor="rating">Rating</Label>
-                    <div className="flex gap-1 mt-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => reviewActions.updateReviewData({ rating: star })}
-                          className={`p-1 ${star <= reviewState.reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
-                        >
-                          <Star className="h-5 w-5 fill-current" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={reviewState.reviewData.title}
-                      onChange={(e) => reviewActions.updateReviewData({ title: e.target.value })}
-                      placeholder="Review title"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="comment">Comment</Label>
-                    <Textarea
-                      id="comment"
-                      value={reviewState.reviewData.comment}
-                      onChange={(e) => reviewActions.updateReviewData({ comment: e.target.value })}
-                      placeholder="Share your thoughts about this course..."
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={handleSubmitReview} className="w-full">
-                    Submit Review
-                  </Button>
+            {learningState.hasUserReviewed ? (
+              <div className="flex items-center gap-2 p-4 border rounded-lg bg-muted/50">
+                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                <div>
+                  <p className="font-medium text-sm">Review Submitted</p>
+                  <p className="text-xs text-muted-foreground">
+                    You rated this course {learningState.reviews.find(r => (r.student as any)?.id === user?.id || (r.student as any)?.documentId === user?.documentId)?.rating || 0}/5 stars
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    &quot;{learningState.reviews.find(r => (r.student as any)?.id === user?.id || (r.student as any)?.documentId === user?.documentId)?.title || ''}&quot;
+                  </p>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            ) : (
+              <Dialog open={reviewState.showReviewDialog} onOpenChange={reviewActions.closeReviewDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline"
+                    onClick={() => reviewActions.openReviewDialog()}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Leave Review
+                  </Button>
+                </DialogTrigger>
+                <DialogContent aria-describedby="review-dialog-description">
+                  <DialogHeader>
+                    <DialogTitle>Leave a Review</DialogTitle>
+                  </DialogHeader>
+                  <div id="review-dialog-description" className="space-y-4">
+                    <div>
+                      <Label htmlFor="rating">Rating</Label>
+                      <div className="flex gap-1 mt-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => reviewActions.updateReviewData({ rating: star })}
+                            className={`p-1 ${star <= reviewState.reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                          >
+                            <Star className="h-5 w-5 fill-current" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={reviewState.reviewData.title}
+                        onChange={(e) => reviewActions.updateReviewData({ title: e.target.value })}
+                        placeholder="Review title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="comment">Comment</Label>
+                      <Textarea
+                        id="comment"
+                        value={reviewState.reviewData.comment}
+                        onChange={(e) => reviewActions.updateReviewData({ comment: e.target.value })}
+                        placeholder="Share your thoughts about this course..."
+                        rows={4}
+                      />
+                    </div>
+                    <Button onClick={handleSubmitReview} className="w-full">
+                      Submit Review
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -449,7 +538,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <span>Overall Progress</span>
                     <span>{learningState.overallProgress}%</span>
                   </div>
-                  <ProgressBar value={learningState.overallProgress} />
+                  <ProgressBar value={Number(learningState.overallProgress) || 0} />
                 </div>
                 
                 <div className="flex justify-between text-sm">
@@ -474,9 +563,8 @@ export default function LearningPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="p-0">
               <div className="space-y-1">
-                {console.log("learningState", learningState?.lessons)}
                 {learningState.lessons.map((lesson, index) => {
-                  const progress = learningActions.getLessonProgress(lesson.documentId);
+                  const progress = learningActions.getLessonProgress(lesson.documentId || 0);
                   const isCompleted = progress?.isCompleted || false;
                   const isCurrent = navState.currentLessonIndex === index;
                   
@@ -484,7 +572,6 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                     <button
                       key={lesson.id}
                       onClick={() => {
-                        console.log('🖱️ Lesson clicked:', lesson.title, 'index:', index);
                         navActions.setCurrentLesson(lesson, index);
                       }}
                       className={`w-full text-left p-3 border-b hover:bg-muted/50 transition-colors ${
@@ -501,7 +588,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                           <div>
                             <p className="font-medium text-sm">{lesson.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {lesson.duration || 'N/A'} min
+                              {Number(lesson.duration) || 'N/A'} min
                             </p>
                           </div>
                         </div>

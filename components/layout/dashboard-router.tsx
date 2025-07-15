@@ -12,13 +12,45 @@ const PUBLIC_ROUTES = [
   '/',
   '/about',
   '/contact',
-  '/courses',
+  '/courses', // This covers /courses/[id] and /courses/[id]/learn
   '/faq',
-  '/instructors', // Public instructors listing
+  '/instructors', // Public instructors listing and /instructors/[id]
   '/auth/login',
   '/auth/register',
-  '/test-api'
+  '/test-api', // This covers /test-api/api-diagnostics and /test-api/debug-course
+  '/test-auth',
+  '/test-lesson-progress' // This covers /test-lesson-progress/[id]
 ];
+
+// Function to check if a route is public (handles dynamic routes)
+const isRoutePublic = (pathname: string): boolean => {
+  return PUBLIC_ROUTES.some(route => {
+    if (route === '/') {
+      return pathname === '/';
+    }
+    // Handle dynamic routes like /courses/[id] and /courses/[id]/learn
+    if (route === '/courses') {
+      return pathname === '/courses' || 
+             pathname.startsWith('/courses/');
+    }
+    // Handle instructor routes including /instructors/[id]
+    if (route === '/instructors') {
+      return pathname === '/instructors' || 
+             pathname.startsWith('/instructors/');
+    }
+    // Handle test-api routes including nested pages
+    if (route === '/test-api') {
+      return pathname === '/test-api' || 
+             pathname.startsWith('/test-api/');
+    }
+    // Handle test-lesson-progress routes including /test-lesson-progress/[id]
+    if (route === '/test-lesson-progress') {
+      return pathname === '/test-lesson-progress' || 
+             pathname.startsWith('/test-lesson-progress/');
+    }
+    return pathname.startsWith(route);
+  });
+};
 
 // Define role-based route permissions
 const ROLE_PERMISSIONS = {
@@ -43,12 +75,7 @@ export function DashboardRouter() {
 
   // Check if current route is public
   const isPublicRoute = () => {
-    return PUBLIC_ROUTES.some(route => {
-      if (route === '/') {
-        return pathname === '/';
-      }
-      return pathname.startsWith(route);
-    });
+    return isRoutePublic(pathname);
   };
 
   // Check if user has permission to access current route
@@ -115,13 +142,18 @@ export function DashboardRouter() {
 
   // Redirect to login if not authenticated and trying to access protected route
   if (!isAuthenticated) {
-    console.log('🔄 DashboardRouter: Redirecting unauthenticated user to login');
-    router.push('/auth/login');
-    return (
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    console.log('🔄 DashboardRouter: User not authenticated, checking route...', { pathname, isPublic: isPublicRoute() });
+    
+    // Only redirect if this is not a public route
+    if (!isPublicRoute()) {
+      console.log('🔄 DashboardRouter: Redirecting unauthenticated user to login');
+      router.push('/auth/login');
+      return (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
   }
 
   // Block access if user doesn't have permission

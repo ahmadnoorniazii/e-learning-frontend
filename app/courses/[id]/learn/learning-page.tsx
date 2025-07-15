@@ -51,6 +51,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     title: '',
     comment: ''
   });
+  const [existingReview, setExistingReview] = useState<CourseReview | null>(null);
   
   // Certificate dialog state
   const [showCertificateDialog, setShowCertificateDialog] = useState(false);
@@ -100,6 +101,13 @@ export default function LearningPage({ params }: { params: { id: string } }) {
       // Get course reviews
       const reviewsResponse = await courseService.getCourseReviews(params.id);
       const reviews = reviewsResponse.data;
+
+      // Check if current user has already submitted a review
+      const userReview = reviews.find(review => {
+        const reviewStudentId = (review.student as any)?.id || (review.student as any)?.data?.id;
+        return reviewStudentId?.toString() === user.id.toString();
+      });
+      setExistingReview(userReview || null);
 
       // Check for certificate if course is completed
       let certificate: Certificate | undefined;
@@ -254,6 +262,9 @@ export default function LearningPage({ params }: { params: { id: string } }) {
         ...data,
         reviews: [review, ...data.reviews]
       });
+
+      // Update existing review state
+      setExistingReview(review);
 
       setShowReviewDialog(false);
       setReviewData({ rating: 5, title: '', comment: '' });
@@ -458,57 +469,72 @@ export default function LearningPage({ params }: { params: { id: string } }) {
 
           {/* Course Actions */}
           <div className="flex gap-4 mb-6">
-            <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Star className="h-4 w-4 mr-2" />
-                  Leave Review
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Leave a Review</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="rating">Rating</Label>
-                    <div className="flex gap-1 mt-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setReviewData({ ...reviewData, rating: star })}
-                          className={`p-1 ${star <= reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
-                        >
-                          <Star className="h-5 w-5 fill-current" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={reviewData.title}
-                      onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
-                      placeholder="Review title"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="comment">Comment</Label>
-                    <Textarea
-                      id="comment"
-                      value={reviewData.comment}
-                      onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
-                      placeholder="Share your thoughts about this course..."
-                      rows={4}
-                    />
-                  </div>
-                  <Button onClick={submitReview} className="w-full">
-                    Submit Review
-                  </Button>
+            {existingReview ? (
+              <div className="flex items-center gap-2 p-4 border rounded-lg bg-muted/50">
+                <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                <div>
+                  <p className="font-medium text-sm">Review Submitted</p>
+                  <p className="text-xs text-muted-foreground">
+                    You rated this course {existingReview.rating}/5 stars
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    &quot;{existingReview.title}&quot;
+                  </p>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            ) : (
+              <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Star className="h-4 w-4 mr-2" />
+                    Leave Review
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Leave a Review</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="rating">Rating</Label>
+                      <div className="flex gap-1 mt-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => setReviewData({ ...reviewData, rating: star })}
+                            className={`p-1 ${star <= reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                          >
+                            <Star className="h-5 w-5 fill-current" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={reviewData.title}
+                        onChange={(e) => setReviewData({ ...reviewData, title: e.target.value })}
+                        placeholder="Review title"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="comment">Comment</Label>
+                      <Textarea
+                        id="comment"
+                        value={reviewData.comment}
+                        onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                        placeholder="Share your thoughts about this course..."
+                        rows={4}
+                      />
+                    </div>
+                    <Button onClick={submitReview} className="w-full">
+                      Submit Review
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 
@@ -627,7 +653,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                   <Award className="h-16 w-16 mx-auto mb-4 text-purple-600" />
                   <h3 className="text-xl font-bold mb-2">Congratulations!</h3>
                   <p className="text-muted-foreground">
-                    You've successfully completed the course. Generate your certificate now!
+                    You&apos;ve successfully completed the course. Generate your certificate now!
                   </p>
                 </div>
                 <Button onClick={generateCertificate} className="w-full">
